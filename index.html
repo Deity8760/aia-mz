@@ -725,16 +725,39 @@ QUESTÕES FATAIS (Anexo V Decreto 54/2015) — verificar se o documento demonstr
 Verificar referência ao SIBMOZ e às 30 KBAs de Moçambique.
 PGCB (DM 55/2022) — verificar: obrigatoriedade; NPL vs GL (GL obrigatório para KBAs e habitats de alto valor de biodiversidade nos termos do Anexo V do Decreto 54/2015, uplift ≥15%); ano de referência vs início das operações; áreas receptoras identificadas; obrigações diferidas ou excluídas; consistência buffer vs métricas; impactos indirectos; permanência e mecanismo de financiamento (conta bancária Moçambique, ≥50% antes da licença de operação).
 PADRÕES IFC/EQUADOR: NÃO são obrigação legal por defeito em Moçambique. Aplicar APENAS se o proponente os invocar explicitamente no documento (financiamento IFC, adesão aos Princípios do Equador, ou compromisso voluntário documentado). A obrigação legal base é sempre a legislação nacional moçambicana. Não flags a ausência de conformidade IFC como lacuna legal a menos que o proponente os tenha invocado.
-FORMATO DE SAÍDA — usar exactamente estes cabeçalhos ##:
+TOM E ESTILO: Tom assertivo e jurídico. Não usar linguagem de hedging ("pode ser que", "poderá", "é possível que"). Usar linguagem definitiva: "é juridicamente insustentável", "viola o Art. X", "está ausente", "é inadmissível". Citar artigos e diplomas exactos. Ser específico: nomear espécies, diplomas, datas, áreas protegidas identificadas no documento. Não repetir observações entre secções.
+${dt === 'EPDA' ? `PRINCÍPIO EPDA→TdR: Para cada lacuna ou fraqueza identificada no EPDA, formular no TdR a recomendação vinculativa que obriga o EIA a corrigir essa lacuna. As recomendações do TdR são a tradução directa das falhas do EPDA em requisitos do EIA. Se o EPDA tem dados desactualizados → o TdR exige levantamentos de campo com data e metodologia. Se o EPDA autodeclara inaplicabilidade do PGCB → o TdR exige triagem formal. Se o EPDA omite restrições sazonais → o TdR exige matriz sazonal vinculativa.` : ''}
+FORMATO DE SAÍDA — produzir exactamente estes cabeçalhos ## com conteúdo completo em cada secção:
 ## IDENTIFICAÇÃO
+Tabela markdown com: Proponente | Consultor | Instrumento | Tipo de projecto | Localização | Sector | Categoria atribuída | Categoria recomendada | Áreas protegidas adjacentes | KBAs | Data de análise
 ## SEMÁFORO EXECUTIVO
-[tabela: Conformidade Estrutural | Questões Fatais | Linha de Base Biodiversidade | Hierarquia de Mitigação | PGCB/Contrabalanços | Participação Pública | Água e Resíduos | Requisitos Sectoriais — com 🔴/🟡/🟢/⚪]
+Produzir tabela markdown completa com 3 colunas — Dimensão | Estado | Fundamento:
+| Dimensão | Estado | Fundamento |
+|---|---|---|
+| Conformidade Estrutural | 🔴/🟡/🟢/⚪ | [uma frase] |
+| Questões Fatais (Anexo V) | 🔴/🟡/🟢/⚪ | [uma frase] |
+| Linha de Base Biodiversidade | 🔴/🟡/🟢/⚪ | [uma frase] |
+| Hierarquia de Mitigação | 🔴/🟡/🟢/⚪ | [uma frase] |
+| PGCB / Contrabalanços | 🔴/🟡/🟢/⚪ | [uma frase] |
+| Participação Pública | 🔴/🟡/🟢/⚪ | [uma frase] |
+| Água e Resíduos | 🔴/🟡/🟢/⚪ | [uma frase] |
+| Requisitos Sectoriais | 🔴/🟡/🟢/⚪ | [uma frase] |
+Legenda: 🔴 Crítico | 🟡 Importante | 🟢 Adequado | ⚪ N/A
 ${dt === 'EPDA' ? `## ANÁLISE DO TERMO DE REFERÊNCIA
-[tabela com 5 colunas: Componente | Ref. Legal | Presente no TdR (✓ completo / ◑ parcial / ✗ ausente) | Avaliação | Recomendação Específica para o TdR
-Cobrir obrigatoriamente: A. Enquadramento/Âmbito | B. Linha de Base Biofísica (incl. baseline acústico se marinho) | C. Linha de Base Biodiversidade (protocolos por espécie-alvo, calendário sazonal) | D. Triagem PGCB (DM 55/2022 Art. V.2) | E. Metodologia de Impactos | F. Restrições Operacionais Sazonais | G. PGA | H. Participação Pública | I. REI (se A+)
-Nas recomendações: ser específico sobre o que deve constar explicitamente no TdR — não generalizar.]
+OBRIGATÓRIO: Produzir tabela markdown completa com 5 colunas. Preencher TODAS as linhas com conteúdo real extraído do documento — não deixar células vazias:
+| Componente | Ref. Legal | Presente no TdR | Avaliação | Recomendação para o TdR |
+|---|---|---|---|---|
+| A. Enquadramento e Âmbito | Art. 10 Decreto 54/2015 | ✓/◑/✗ | [avaliação específica] | [recomendação vinculativa específica] |
+| B. Linha de Base Biofísica (incl. baseline acústico subaquático) | Art. 10 + DM 129/2006 | ✓/◑/✗ | [avaliação] | [recomendação] |
+| C. Linha de Base Biodiversidade (protocolos por espécie, calendário sazonal) | Decreto 54/2015 Anexo V | ✓/◑/✗ | [avaliação] | [recomendação] |
+| D. Triagem PGCB | DM 55/2022 Art. V.2 | ✓/◑/✗ | [avaliação] | [recomendação] |
+| E. Metodologia de Avaliação de Impactos (incl. cumulativos) | DM 129/2006 | ✓/◑/✗ | [avaliação] | [recomendação] |
+| F. Restrições Operacionais Sazonais | Decreto 54/2015 Anexo V | ✓/◑/✗ | [avaliação] | [recomendação] |
+| G. PGA (incl. plano de emergência/derrame) | Art. 11.2.n Decreto 54/2015 | ✓/◑/✗ | [avaliação] | [recomendação] |
+| H. Participação Pública fase EIA | DM 130/2006 | ✓/◑/✗ | [avaliação] | [recomendação] |
+| I. REI (apenas A+) | DM 118/2022 | ✓/◑/✗/N/A | [avaliação] | [recomendação] |
 ` : ''}## QUESTÕES CRÍTICAS — NÍVEL 1
-[numeradas: **Lacuna** | **Base legal** | **Impacto no licenciamento** | **Acção requerida**]
+Numeradas. Para cada questão: **Lacuna:** [descrição específica] | **Base legal:** [diploma e artigo exactos] | **Impacto no licenciamento:** [consequência concreta] | **Acção requerida:** [acção específica e vinculativa]
 ## BIODIVERSIDADE E CONTRABALANÇOS
 ### Linha de Base
 ### Hierarquia de Mitigação
@@ -743,7 +766,7 @@ Nas recomendações: ser específico sobre o que deve constar explicitamente no 
 ## LACUNAS E OBSERVAÇÕES — NÍVEL 2 E 3
 ## SINALIZAÇÕES — OUTROS DOMÍNIOS
 ## MINUTA DE COMUNICAÇÃO AO PROPONENTE
-ESCRITA: Português de Moçambique, ortografia pré-1990 (óptimo, acção, facto, directo, objectivo). Citar artigos e diplomas exactos. Não repetir observações entre secções.`;
+Redigir carta formal completa em nome da DINAB/DINAMC/MTA ao proponente, cobrindo todas as questões críticas e lacunas principais. Ortografia pré-1990 (óptimo, acção, facto, directo, objectivo). Português de Moçambique.`;
 }
 
 // ── MAIN ANALYSIS ──────────────────────────────────────────────────────────
