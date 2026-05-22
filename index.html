@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIA·MZ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,500&display=swap');
+  :root {
+    --bg: #f5f2ec; --surface: #faf8f4; --surface2: #ede9e1;
+    --border: #d4cfc4; --border-dim: #e4dfd6;
+    --text: #1a1714; --muted: #5a554e; --dim: #9a9490;
+    --accent: #5a3e1b; --mid: #8a6030; --soft: #e8dcc8;
+    --red: #8a2a1e; --red-bg: #fdf0ee;
+    --yellow: #7a5c00; --yellow-bg: #fdf8e8;
+    --green: #1e5c30; --green-bg: #edf6f0;
+    --blue: #1e3d5c; --blue-bg: #edf3f8;
+    --mono: 'IBM Plex Mono', monospace;
+    --serif: 'Source Serif 4', Georgia, serif;
+    --r: 3px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--serif); font-size: 14px; line-height: 1.65; }
+  .shell { display: grid; grid-template-columns: 300px 1fr; height: 100vh; overflow: hidden; }
+  /* SIDEBAR */
+  .sidebar { border-right: 1px solid var(--border); overflow-y: auto; background: var(--surface); display: flex; flex-direction: column; }
+  .sb-top { padding: 14px 16px; border-bottom: 2px solid var(--accent); background: var(--surface); }
+  .logo { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.18em; color: var(--accent); }
+  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; font-style: italic; }
+  .key-status { margin-top: 7px; display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10px; }
+  .key-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .key-dot.ok { background: var(--green); }
+  .key-dot.missing { background: var(--red); }
+  .key-label { color: var(--dim); flex: 1; }
+  .key-change { color: var(--mid); cursor: pointer; text-decoration: underline; text-decoration-style: dotted; font-size: 10px; }
+  .key-change:hover { color: var(--accent); }
+  .sb-sec { padding: 14px 16px; border-bottom: 1px solid var(--border-dim); }
+  .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); margin-bottom: 8px; }
+  select, textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; font-family: var(--serif); font-size: 13px; outline: none; border-radius: var(--r); transition: border-color 0.15s; }
+  select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239a9490'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer; }
+  select:focus, textarea:focus { border-color: var(--mid); }
+  /* DROPZONE */
+  .dz { border: 1.5px dashed var(--border); border-radius: var(--r); padding: 14px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; background: var(--bg); }
+  .dz:hover, .dz.over { border-color: var(--mid); background: var(--soft); }
+  .dz input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .dz-txt { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .dz-txt strong { color: var(--text); }
+  .fl { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+  .fi { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: var(--surface2); border-radius: var(--r); border: 1px solid var(--border-dim); }
+  .fn { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--mono); font-size:10px; color:var(--muted); }
+  .fsz { font-family:var(--mono); font-size:10px; color:var(--dim); flex-shrink:0; }
+  .frm { background:none; border:none; cursor:pointer; color:var(--dim); font-size:14px; padding:0 2px; }
+  .frm:hover { color: var(--red); }
+  /* PASTE AREA */
+  .paste-area { width:100%; min-height:80px; resize:vertical; font-size:12px; }
+  /* BUTTON */
+  .btn { width:100%; padding:12px; background:var(--accent); border:none; color:#faf8f4; font-family:var(--mono); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; cursor:pointer; border-radius:var(--r); transition:background 0.15s; }
+  .btn:hover:not(:disabled) { background: var(--mid); }
+  .btn:disabled { opacity:0.45; cursor:not-allowed; }
+  /* MAIN */
+  .main { display:flex; flex-direction:column; overflow:hidden; }
+  .tabs { display:flex; border-bottom:1px solid var(--border); background:var(--surface); padding:0 20px; flex-shrink:0; }
+  .tab { padding:12px 16px; font-size:12px; font-family:var(--mono); letter-spacing:0.07em; color:var(--dim); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all 0.15s; text-transform:uppercase; user-select:none; }
+  .tab:hover { color:var(--muted); }
+  .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .content { flex:1; overflow-y:auto; padding:24px 28px; }
+  /* WELCOME */
+  .welcome { max-width:520px; margin:32px auto 0; }
+  .wey { font-family:var(--mono); font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--mid); margin-bottom:10px; }
+  .welcome h2 { font-size:19px; font-weight:400; margin-bottom:10px; line-height:1.4; }
+  .welcome p { font-size:13px; color:var(--muted); line-height:1.75; margin-bottom:8px; }
+  .notice { padding:10px 14px; background:var(--yellow-bg); border:1px solid #e0d080; border-radius:var(--r); font-size:12px; color:var(--yellow); margin-top:16px; line-height:1.55; }
+  .leg { margin-top:16px; padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); }
+  .leg-t { font-family:var(--mono); font-size:10px; letter-spacing:0.12em; color:var(--dim); text-transform:uppercase; margin-bottom:8px; }
+  .leg ul { list-style:none; display:grid; grid-template-columns:1fr 1fr; gap:3px 16px; }
+  .leg li { font-size:11px; color:var(--muted); font-family:var(--mono); padding:1px 0; }
+  .leg li::before { content:'› '; color:var(--mid); }
+  /* LOADING */
+  .loading { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:16px; }
+  .spin { width:32px; height:32px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.9s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .load-t { font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+  .load-s { font-size:12px; color:var(--dim); text-align:center; max-width:400px; font-style:italic; line-height:1.6; }
+  /* RESULTS */
+  .scope { padding:10px 14px; background:var(--blue-bg); border:1px solid #c0d4e8; border-radius:var(--r); font-size:12px; color:var(--blue); margin-bottom:20px; }
+  .rh { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; padding-bottom:18px; border-bottom:1px solid var(--border); }
+  .rp { font-size:16px; font-weight:500; margin-bottom:3px; }
+  .rs { font-size:12px; color:var(--muted); }
+  .rt { font-family:var(--mono); font-size:10px; color:var(--dim); white-space:nowrap; }
+  /* SECTIONS */
+  .asec { margin-bottom:14px; }
+  .ah { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); cursor:pointer; user-select:none; transition:background 0.12s; }
+  .ah:hover { background:var(--surface2); }
+  .snum { font-family:var(--mono); font-size:10px; color:var(--mid); background:var(--soft); padding:2px 7px; letter-spacing:0.1em; flex-shrink:0; border-radius:2px; }
+  .stitle { font-size:13px; font-weight:500; color:var(--text); flex:1; }
+  .stog { font-size:10px; color:var(--dim); }
+  .sb { padding:16px 20px; background:var(--surface); border:1px solid var(--border); border-top:none; border-radius:0 0 var(--r) var(--r); font-size:13px; line-height:1.8; color:var(--muted); }
+  .sb.collapsed { display:none; }
+  /* FORMATTING */
+  .sb h3 { font-size:10px; font-weight:600; font-family:var(--mono); letter-spacing:0.07em; text-transform:uppercase; color:var(--accent); margin:16px 0 7px; }
+  .sb h3:first-child { margin-top:0; }
+  .sb p { margin-bottom:9px; }
+  .sb ul, .sb ol { padding-left:20px; margin-bottom:9px; }
+  .sb li { margin-bottom:4px; }
+  .sb strong { color:var(--text); font-weight:600; }
+  .sb em { color:var(--mid); font-style:italic; }
+  .sb code { font-family:var(--mono); font-size:11px; background:var(--surface2); border:1px solid var(--border-dim); padding:1px 5px; border-radius:2px; color:var(--accent); }
+  .sb table { width:100%; border-collapse:collapse; margin:10px 0; font-size:12px; }
+  .sb th { background:var(--surface2); padding:7px 10px; border:1px solid var(--border); text-align:left; font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted); }
+  .sb td { padding:7px 10px; border:1px solid var(--border-dim); vertical-align:top; }
+  .st-r { color:var(--red); font-weight:600; }
+  .st-y { color:var(--yellow); font-weight:600; }
+  .st-g { color:var(--green); font-weight:600; }
+  .st-n { color:var(--dim); }
+  /* RAW */
+  .raw { font-family:var(--mono); font-size:12px; line-height:1.85; color:var(--muted); white-space:pre-wrap; word-break:break-word; background:var(--surface); padding:20px; border:1px solid var(--border); border-radius:var(--r); }
+  /* ERROR */
+  .err { padding:16px 20px; border:1px solid #e0b0aa; background:var(--red-bg); border-radius:var(--r); font-size:13px; color:var(--red); margin:16px 0; }
+  .err strong { display:block; margin-bottom:6px; font-family:var(--mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; }
+  /* COPY */
+  .copy-btn { display:inline-flex; align-items:center; gap:5px; padding:6px 12px; background:var(--surface); border:1px solid var(--border); color:var(--muted); font-family:var(--mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; border-radius:var(--r); transition:all 0.15s; margin-bottom:16px; }
+  .copy-btn:hover { border-color:var(--mid); color:var(--accent); background:var(--soft); }
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  /* ── API KEY MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(26,23,20,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; backdrop-filter: blur(2px);
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 28px 32px; max-width: 420px; width: 90%;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.22);
+  }
+  .modal-logo { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; color: var(--mid); margin-bottom: 14px; }
+  .modal-title { font-size: 16px; font-weight: 500; margin-bottom: 8px; color: var(--text); }
+  .modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+  .modal-sub a { color: var(--mid); }
+  .modal-input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; font-family: var(--mono); font-size: 12px; outline: none; border-radius: var(--r); letter-spacing: 0.04em; }
+  .modal-input:focus { border-color: var(--mid); }
+  .modal-btn { margin-top: 14px; width: 100%; padding: 10px; background: var(--accent); border: none; color: #faf8f4; font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; border-radius: var(--r); }
+  .modal-btn:hover { background: var(--mid); }
+  .modal-hint { margin-top: 12px; font-size: 11px; color: var(--dim); text-align: center; line-height: 1.5; }
+
+  /* ── EXTRACTION POPUP ── */
+  .ext-overlay {
+    position: fixed; inset: 0; background: rgba(26,23,20,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 900; backdrop-filter: blur(1px);
+  }
+  .ext-overlay.hidden { display: none; }
+  .ext-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 24px 28px; max-width: 480px; width: 92%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+  .ext-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--mid); margin-bottom: 10px; }
+  .ext-fname { font-family: var(--mono); font-size: 11px; color: var(--text); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ext-meta { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+  .ext-bar-track { height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 6px; }
+  .ext-bar-fill { height: 4px; background: var(--accent); border-radius: 2px; transition: width 0.2s; }
+  .ext-progress { font-family: var(--mono); font-size: 10px; color: var(--dim); margin-bottom: 16px; }
+  .ext-sections { border-top: 1px solid var(--border-dim); padding-top: 12px; }
+  .ext-sec-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); margin-bottom: 8px; }
+  .ext-sec-item { display: flex; align-items: flex-start; gap: 7px; font-size: 12px; color: var(--muted); margin-bottom: 5px; line-height: 1.4; }
+  .ext-sec-icon { flex-shrink: 0; font-family: var(--mono); font-size: 10px; width: 14px; margin-top: 1px; }
+  .ext-sec-icon.done { color: var(--green); }
+  .ext-sec-icon.pending { color: var(--dim); }
+  .ext-footer { margin-top: 14px; font-family: var(--mono); font-size: 10px; color: var(--dim); display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<!-- ── API KEY MODAL ── -->
+<div class="modal-overlay hidden" id="keyOverlay">
+  <div class="modal-box">
+    <div class="modal-logo">AIA·MZ</div>
+    <div class="modal-title">Chave de acesso DeepSeek</div>
+    <div class="modal-sub">
+      Introduza a sua chave API DeepSeek para activar a análise. A chave é guardada apenas nesta sessão do browser e nunca transmitida para qualquer servidor.<br><br>
+      Sem chave? Criar conta em <a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a>.
+    </div>
+    <input class="modal-input" type="password" id="keyInput" placeholder="sk-••••••••••••••••••••••••••••••••" autocomplete="off" />
+    <button class="modal-btn" id="keySaveBtn" onclick="saveApiKey()">Confirmar e continuar</button>
+    <div class="modal-hint">A chave destina-se a ser usada directamente com a API DeepSeek. Não é armazenada de forma permanente.</div>
+  </div>
+</div>
+
+<!-- ── EXTRACTION POPUP ── -->
+<div class="ext-overlay hidden" id="extOverlay">
+  <div class="ext-box">
+    <div class="ext-label">Extracção selectiva — documento grande</div>
+    <div class="ext-fname" id="extFname">—</div>
+    <div class="ext-meta" id="extMeta">—</div>
+    <div class="ext-bar-track"><div class="ext-bar-fill" id="extBar" style="width:0%"></div></div>
+    <div class="ext-progress" id="extProgress">A iniciar…</div>
+    <div class="ext-sections">
+      <div class="ext-sec-label">Secções a incluir na análise</div>
+      <div id="extSections"></div>
+    </div>
+    <div class="ext-footer">
+      <span id="extPageCount">—</span>
+      <span id="extCharCount">—</span>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-top">
+      <div class="logo">AIA·MZ</div>
+      <div class="logo-sub">Analisador de EIA — Moçambique</div>
+      <div class="key-status" id="keyStatus">
+        <span class="key-dot missing" id="keyDot"></span>
+        <span class="key-label" id="keyLabel">Chave não configurada</span>
+        <span class="key-change" onclick="showKeyModal()">configurar</span>
+      </div>
+    </div>
+    <div class="sb-sec">
+      <div class="lbl">Tipo de Documento</div>
+      <select id="docType">
+        <option value="">— Seleccionar —</option>
+        <option value="REIA">REIA — Relatório de EIA completo</option>
+        <option value="EPDA">EPDA &amp; TdR — Estudo de Pré-viabilidade</option>
+        <option value="EAS">EAS — Estudo Ambiental Simplificado</option>
+        <option value="PGCB_PREL">PGCB Preliminar</option>
+        <option value="PGCB_FINAL">PGCB Final</option>
+        <option value="PGA">PGA — Plano de Gestão Ambiental</option>
+      </select>
+    </div>
+    <div class="sb-sec">
+      <div class="lbl">Modo de Análise</div>
+      <select id="mode">
+        <option value="standalone">Documento isolado — analisar só este documento</option>
+        <option value="submission">Submissão completa — verificar conjunto de documentos</option>
+      </select>
+      <div id="modeHint" style="margin-top:7px;font-size:11px;color:var(--muted);line-height:1.5;"></div>
+    </div>
+    <div class="sb-sec">
+      <div class="lbl">Categoria</div>
+      <select id="category">
+        <option value="">— Seleccionar —</option>
+        <option value="A+">A+</option>
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="desconhecida">Desconhecida / A verificar</option>
+      </select>
+    </div>
+    <div class="sb-sec">
+      <div class="lbl">Sector</div>
+      <select id="sector">
+        <option value="">— Seleccionar —</option>
+        <option value="Mineiro">Mineiro</option>
+        <option value="Petrolífero / Gás">Petrolífero / Gás</option>
+        <option value="Estradas e Acessos">Estradas e Acessos</option>
+        <option value="Energia — Linhas e Centrais">Energia — Linhas e Centrais</option>
+        <option value="Portos e Aeroportos">Portos e Aeroportos</option>
+        <option value="Barragens e Infra-estruturas Hídricas">Barragens e Infra-estruturas Hídricas</option>
+        <option value="Turismo e Hotelaria">Turismo e Hotelaria</option>
+        <option value="Florestal e Agro-Florestal">Florestal e Agro-Florestal</option>
+        <option value="Agricultura e Agro-Indústria">Agricultura e Agro-Indústria</option>
+        <option value="Energia Renovável">Energia Renovável</option>
+        <option value="Indústria e Manufacturação">Indústria e Manufacturação</option>
+        <option value="Resíduos e Saneamento">Resíduos e Saneamento</option>
+        <option value="Outro">Outro</option>
+      </select>
+    </div>
+    <div class="sb-sec">
+      <div class="lbl">Contexto de Localização</div>
+      <select id="locCtx">
+        <option value="">— Opcional —</option>
+        <option value="costeiro">Zona Costeira ou Marinha</option>
+        <option value="area_conservacao">Próximo de Área de Conservação</option>
+        <option value="kba">Próximo de KBA</option>
+        <option value="interior">Interior — sem sensibilidades especiais</option>
+      </select>
+    </div>
+    <div class="sb-sec">
+      <div class="lbl">Nome do Projecto (opcional)</div>
+      <input type="text" id="projName" placeholder="Ex: Projecto Mineiro de Moatize" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--serif);font-size:13px;outline:none;border-radius:var(--r);">
+    </div>
+    <div class="sb-sec">
+      <div class="lbl">Carregar PDF(s)</div>
+      <div class="dz" id="dz">
+        <input type="file" id="fi" multiple accept=".pdf,.txt,.docx">
+        <div class="dz-txt"><strong>Clique ou arraste</strong><br>PDF, TXT</div>
+      </div>
+      <div class="fl" id="fl"></div>
+    </div>
+    <div class="sb-sec">
+      <div class="lbl">Ou colar texto do documento aqui</div>
+      <textarea class="paste-area" id="pasteText" placeholder="Cole aqui secções do EIA para análise (útil para documentos grandes — cole a secção de biodiversidade, PGA, etc.)"></textarea>
+    </div>
+    <div class="sb-sec">
+      <div class="lbl">Notas do Analista</div>
+      <textarea id="notes" rows="2" placeholder="Ex: Foco nos impactos sobre mangais."></textarea>
+    </div>
+    <div class="sb-sec" style="border-bottom:none;margin-top:auto;">
+      <button class="btn" id="goBtn" onclick="go()">▶ Analisar</button>
+    </div>
+  </aside>
+  <!-- MAIN -->
+  <main class="main">
+    <div class="tabs" id="tabs" style="display:none;">
+      <div class="tab active" onclick="switchTab('results',this)">Resultados</div>
+      <div class="tab" onclick="switchTab('raw',this)">Texto Completo</div>
+    </div>
+    <div class="content" id="mc">
+      <div class="welcome">
+        <div class="wey">Ferramenta de análise técnica</div>
+        <h2>Revisão de conformidade de EIA — Moçambique</h2>
+        <p>Analisa documentos do processo de AIA e produz um relatório estruturado de conformidade legal com foco em ambiente e biodiversidade.</p>
+        <p>Documentos grandes são processados automaticamente por extracção selectiva de secções — configure a chave DeepSeek no painel esquerdo para começar.</p>
+        <div class="notice">
+          ⚠ Para documentos muito grandes (&gt;400 páginas): a extracção automática selecciona as secções de maior relevância regulatória. Para análise de documentos completos pode colar texto directamente na caixa de texto abaixo.
+        </div>
+        <div class="leg">
+          <div class="leg-t">Base legislativa</div>
+          <ul>
+            <li>Decreto 54/2015 — AIA</li><li>DM 55/2022 — Contrabalanços</li>
+            <li>DM 129/2006 — Directiva EIA</li><li>DM 130/2006 — Part. Pública</li>
+            <li>DM 118/2022 — REI (Cat. A+)</li><li>Decreto 26/2004 — Mineiro</li>
+            <li>Decreto 56/2010 — Petrolífero</li><li>Decreto 18/2004 — Qualidade</li>
+            <li>Lei 5/2017 — Biodiversidade</li><li>Decreto 25/2008 — Esp. Invasoras</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let files = [], analysis = null, activeTab = 'results';
+let apiKey = sessionStorage.getItem('aia_dskey') || null;
+
+// ── API KEY MODAL ──────────────────────────────────────────────────────────
+function showKeyModal() {
+  document.getElementById('keyOverlay').classList.remove('hidden');
+  document.getElementById('keyInput').focus();
+}
+function hideKeyModal() {
+  document.getElementById('keyOverlay').classList.add('hidden');
+}
+function saveApiKey() {
+  const v = document.getElementById('keyInput').value.trim();
+  if (!v) { document.getElementById('keyInput').style.borderColor = 'var(--red)'; return; }
+  apiKey = v;
+  sessionStorage.setItem('aia_dskey', v);
+  hideKeyModal();
+  updateKeyStatus();
+}
+document.getElementById('keyInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveApiKey(); });
+function updateKeyStatus() {
+  const dot = document.getElementById('keyDot');
+  const label = document.getElementById('keyLabel');
+  const change = document.querySelector('.key-change');
+  if (apiKey) {
+    dot.className = 'key-dot ok';
+    label.textContent = 'DeepSeek · ' + apiKey.slice(0,8) + '…';
+    change.textContent = 'alterar';
+  } else {
+    dot.className = 'key-dot missing';
+    label.textContent = 'Chave não configurada';
+    change.textContent = 'configurar';
+  }
+}
+// Init on load
+if (apiKey) updateKeyStatus();
+else showKeyModal();
+
+// ── MODE HINT ──────────────────────────────────────────────────────────────
+const modeHints = {
+  'standalone': 'Analisa apenas o documento carregado. Não flags a ausência de outros documentos do processo.',
+  'submission': 'Verifica o conjunto de documentos submetidos, incluindo consistência entre eles e completude da submissão.'
+};
+document.getElementById('mode').addEventListener('change', function() {
+  document.getElementById('modeHint').textContent = modeHints[this.value] || '';
+});
+document.getElementById('modeHint').textContent = modeHints['standalone'];
+document.getElementById('docType').addEventListener('change', function() {
+  if (['PGA','PGCB_PREL','PGCB_FINAL','EPDA'].includes(this.value)) {
+    document.getElementById('mode').value = 'standalone';
+    document.getElementById('modeHint').textContent = modeHints['standalone'];
+  }
+});
+
+// ── FILE HANDLING ──────────────────────────────────────────────────────────
+const SIZE_THRESHOLD = 1.5 * 1024 * 1024; // show extraction indicator ≥ 1.5 MB
+const SMART_THRESHOLD = 320000; // chars — trigger smart extraction above this
+
+const dz = document.getElementById('dz'), fi = document.getElementById('fi');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); addFiles(e.dataTransfer.files); });
+fi.addEventListener('change', e => addFiles(e.target.files));
+
+function addFiles(flist) {
+  for (const f of flist) if (!files.find(x => x.name === f.name)) files.push(f);
+  renderFiles();
+}
+function removeFile(n) {
+  files = files.filter(f => f.name !== n);
+  renderFiles();
+  if (!files.length) { const w = document.getElementById('scannedWarn'); if (w) w.remove(); }
+}
+function renderFiles() {
+  const fl = document.getElementById('fl'); fl.innerHTML = '';
+  files.forEach(f => {
+    const sz = f.size < 1048576 ? Math.round(f.size/1024)+'kb' : (f.size/1048576).toFixed(1)+'mb';
+    const isLarge = f.name.toLowerCase().endsWith('.pdf') && f.size > SIZE_THRESHOLD;
+    const d = document.createElement('div'); d.className = 'fi';
+    d.innerHTML = `<span class="fn" title="${f.name}">${f.name}</span>
+      <span class="fsz">${sz}</span>
+      ${isLarge ? '<span class="fstatus" style="font-size:10px;font-family:var(--mono);color:var(--mid);flex-shrink:0;">⟳ a extrair</span>' : ''}
+      <button class="frm" onclick="removeFile('${f.name.replace(/'/g,"\\'")}')">×</button>`;
+    fl.appendChild(d);
+  });
+}
+
+// ── PDF.js ─────────────────────────────────────────────────────────────────
+const PDFJS_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let pdfjsLib = null;
+async function loadPdfJs() {
+  if (pdfjsLib) return pdfjsLib;
+  return new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = PDFJS_SRC;
+    s.onload = () => {
+      pdfjsLib = window['pdfjs-dist/build/pdf'];
+      pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+      pdfjsLib.verbosity = pdfjsLib.VerbosityLevel ? pdfjsLib.VerbosityLevel.ERRORS : 0;
+      res(pdfjsLib);
+    };
+    s.onerror = rej; document.head.appendChild(s);
+  });
+}
+
+// ── SMART EXTRACTION ───────────────────────────────────────────────────────
+// Keywords scored per page to identify high-value sections
+const PAGE_KW = [
+  ['biodiversidade',3],['flora',2],['fauna',2],['espécie',2],['habitat',2],['ecossistema',2],
+  ['vegetação',1],['avifauna',1],['herpetofauna',1],['ictiofauna',1],['mamífero',1],
+  ['mangal',3],['mangais',3],['coral',3],['recife',2],['ervas marinhas',3],['erva marinha',3],
+  ['dugongo',3],['tartaruga',3],['cetáceo',2],['baleia',2],['golfinho',2],
+  ['kba',3],['key biodiversity',3],['área protegida',3],['área de conservação',3],
+  ['parque nacional',2],['reserva',2],['primeiras e segundas',3],['bazaruto',2],['quirimbas',2],
+  ['pgcb',3],['contrabalanço',3],['ganho líquido',3],['npl',2],['sem perda',2],
+  ['impacto',2],['impacte',2],['efeito ambiental',2],['perturbação',1],['degradação',1],
+  ['mitigação',2],['medida de mitigação',2],['pga',2],['monitorização',1],
+  ['decreto 54',2],['dm 55',3],['dm 118',2],['decreto 56',1],
+  ['participação pública',2],['consulta pública',2],['comunidade',1],
+  ['termo de referência',2],['tdr',2],['âmbito do estudo',2],['categorização',2],
+  ['questões fatais',3],['anexo v',2],['impactos cumulativos',2],
+  ['qualidade da água',1],['resíduos',1],['emissões',1],['ruído',1],
+];
+
+function scorePage(text) {
+  const lower = text.toLowerCase();
+  let score = 0;
+  for (const [kw, w] of PAGE_KW) { if (lower.includes(kw)) score += w; }
+  return score;
+}
+
+// Section name detection for popup display
+const SECTION_PATTERNS = [
+  { re: /introdução|âmbito|objectivo|enquadramento|descrição do projecto/i, label: 'Introdução e âmbito do projecto' },
+  { re: /legislação|enquadramento legal|regulament|normativo|decreto|diploma/i, label: 'Enquadramento legal e regulatório' },
+  { re: /biodiversidade|flora|fauna|ecossistema|habitat/i, label: 'Biodiversidade, flora e fauna' },
+  { re: /área protegida|área de conservação|parque|kba|primeiras.*segundas|bazaruto/i, label: 'Áreas protegidas e KBAs' },
+  { re: /impacto|avaliação de impacto/i, label: 'Avaliação de impactos ambientais' },
+  { re: /mitigação|medida|pga|gestão ambiental/i, label: 'Medidas de mitigação e PGA' },
+  { re: /pgcb|contrabalanço|compensação|ganho líquido/i, label: 'PGCB — Contrabalanços de biodiversidade' },
+  { re: /participação pública|consulta pública|comunidade/i, label: 'Participação pública' },
+  { re: /termo de referência|tdr|categorização/i, label: 'TdR e categorização' },
+  { re: /conclus|recomend|síntese/i, label: 'Conclusões e recomendações' },
+];
+
+function detectSection(text) {
+  for (const { re, label } of SECTION_PATTERNS) {
+    if (re.test(text)) return label;
+  }
+  return null;
+}
+
+// Show/update extraction popup
+function showExtPopup(fname, totalPages, totalChars) {
+  document.getElementById('extFname').textContent = fname;
+  document.getElementById('extMeta').textContent =
+    `${totalPages} páginas — ${Math.round(totalChars/1000)}k caracteres extraídos — limite de contexto: 320k`;
+  document.getElementById('extBar').style.width = '0%';
+  document.getElementById('extProgress').textContent = 'A avaliar conteúdo das páginas…';
+  document.getElementById('extSections').innerHTML = '';
+  document.getElementById('extPageCount').textContent = 'Páginas incluídas: a calcular…';
+  document.getElementById('extCharCount').textContent = '';
+  document.getElementById('extOverlay').classList.remove('hidden');
+}
+function updateExtProgress(pct, msg) {
+  document.getElementById('extBar').style.width = pct + '%';
+  document.getElementById('extProgress').textContent = msg;
+}
+function addExtSection(label, done) {
+  const el = document.getElementById('extSections');
+  const d = document.createElement('div'); d.className = 'ext-sec-item';
+  d.innerHTML = `<span class="ext-sec-icon ${done?'done':'pending'}">${done?'✓':'↻'}</span><span>${label}</span>`;
+  el.appendChild(d);
+}
+function finaliseExtPopup(includedPages, totalPages, includedChars) {
+  document.getElementById('extPageCount').textContent = `Páginas incluídas: ${includedPages} de ${totalPages}`;
+  document.getElementById('extCharCount').textContent = `~${Math.round(includedChars/1000)}k caracteres`;
+  document.getElementById('extBar').style.width = '100%';
+  document.getElementById('extProgress').textContent = 'Extracção concluída — a enviar para análise…';
+}
+function hideExtPopup() {
+  document.getElementById('extOverlay').classList.add('hidden');
+}
+
+// The main smart extraction function
+async function extractPdfTextSmart(file) {
+  const lib = await loadPdfJs();
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await lib.getDocument({ data: arrayBuffer }).promise;
+  const totalPages = pdf.numPages;
+
+  updateFileStatus(file.name, 'extracting');
+
+  // First pass: extract ALL pages and score them
+  const pages = []; // { idx, text, score, section }
+  let sampleChars = 0, sampleWithText = 0;
+  const SAMPLE = Math.min(totalPages, 20);
+
+  for (let i = 1; i <= totalPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const text = content.items.map(item => item.str).join(' ').trim();
+    const score = scorePage(text);
+    const section = detectSection(text);
+    pages.push({ idx: i, text, score, section });
+    if (i <= SAMPLE) {
+      if (text.length > 50) sampleWithText++;
+      sampleChars += text.length;
+    }
+  }
+
+  const totalChars = pages.reduce((s, p) => s + p.text.length, 0);
+  const isScanned = (sampleChars / SAMPLE) < 100 || (sampleWithText / SAMPLE) < 0.30;
+
+  // If total fits in context window, return everything
+  if (totalChars <= SMART_THRESHOLD) {
+    const text = pages.map(p => `\n--- Página ${p.idx} ---\n${p.text}`).join('');
+    return { text, isScanned, totalPages, totalChars, smartExtracted: false };
+  }
+
+  // SMART EXTRACTION PATH — show popup
+  showExtPopup(file.name, totalPages, totalChars);
+
+  // Always include: first 15 pages + last 8 pages
+  const alwaysFirst = new Set(pages.slice(0, 15).map(p => p.idx));
+  const alwaysLast = new Set(pages.slice(-8).map(p => p.idx));
+  const alwaysIncluded = new Set([...alwaysFirst, ...alwaysLast]);
+
+  // Sort remaining pages by score descending
+  const remaining = pages.filter(p => !alwaysIncluded.has(p.idx))
+    .sort((a, b) => b.score - a.score);
+
+  // Fill up to SMART_THRESHOLD chars
+  const selectedSet = new Set([...alwaysIncluded]);
+  let charCount = pages.filter(p => alwaysIncluded.has(p.idx)).reduce((s,p)=>s+p.text.length,0);
+
+  updateExtProgress(30, 'A seleccionar secções de alta relevância…');
+
+  const discoveredSections = new Set();
+  for (const p of remaining) {
+    if (charCount + p.text.length > SMART_THRESHOLD) continue;
+    selectedSet.add(p.idx);
+    charCount += p.text.length;
+    if (p.section) discoveredSections.add(p.section);
+  }
+
+  updateExtProgress(60, 'A verificar cobertura de secções críticas…');
+
+  // Populate section list in popup
+  // Standard sections we always mention
+  const standardSections = [
+    'Introdução e âmbito do projecto',
+    'Enquadramento legal e regulatório',
+    'Biodiversidade, flora e fauna',
+    'Áreas protegidas e KBAs',
+    'Avaliação de impactos ambientais',
+    'Medidas de mitigação e PGA',
+    'Participação pública',
+  ];
+  for (const s of standardSections) {
+    const found = discoveredSections.has(s) ||
+      pages.filter(p => selectedSet.has(p.idx)).some(p => p.section === s);
+    addExtSection(s, found);
+  }
+
+  updateExtProgress(85, 'A preparar texto para envio…');
+
+  // Build final text in page order
+  const selectedPages = pages.filter(p => selectedSet.has(p.idx)).sort((a,b) => a.idx - b.idx);
+  let text = `[NOTA: Extracção selectiva — ${selectedPages.length} de ${totalPages} páginas incluídas por limite de contexto. Secções de maior relevância regulatória priorizadas.]\n`;
+  text += selectedPages.map(p => `\n--- Página ${p.idx} ---\n${p.text}`).join('');
+
+  finaliseExtPopup(selectedPages.length, totalPages, charCount);
+
+  // Small delay so user can read the popup
+  await new Promise(r => setTimeout(r, 1200));
+  hideExtPopup();
+
+  return { text, isScanned, totalPages, totalChars, smartExtracted: true, pagesIncluded: selectedPages.length };
+}
+
+// ── READ FILE ──────────────────────────────────────────────────────────────
+// DeepSeek does not support native PDF upload — always extract as text
+async function readFile(f) {
+  if (f.name.toLowerCase().endsWith('.pdf')) {
+    updateFileStatus(f.name, 'extracting');
+    try {
+      const result = await extractPdfTextSmart(f);
+      if (result.isScanned) {
+        updateFileStatus(f.name, 'scanned');
+        const warning = `[AVISO: Este PDF parece ser maioritariamente digitalizado (imagens). A análise pode ser incompleta. O proponente deve ser solicitado a submeter uma versão em formato texto nativo.]\n\n`;
+        return { type: 'text', data: warning + result.text, name: f.name, isScanned: true };
+      }
+      updateFileStatus(f.name, result.smartExtracted ? 'selective' : 'extracted');
+      return { type: 'text', data: result.text, name: f.name, smartExtracted: result.smartExtracted };
+    } catch(e) {
+      updateFileStatus(f.name, 'error');
+      return { type: 'text', data: `[Erro ao extrair texto do PDF: ${e.message}]`, name: f.name };
+    }
+  } else {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = e => res({ type:'text', data: e.target.result, name: f.name });
+      r.onerror = rej;
+      r.readAsText(f);
+    });
+  }
+}
+
+function updateFileStatus(name, status) {
+  const fl = document.getElementById('fl');
+  fl.querySelectorAll('.fi').forEach(item => {
+    const fn = item.querySelector('.fn');
+    if (fn && fn.title === name) {
+      const statusEl = item.querySelector('.fstatus');
+      if (statusEl) {
+        const MAP = {
+          extracting:  ['⟳ extraindo…',       'var(--mid)'],
+          extracted:   ['✓ texto extraído',    'var(--green)'],
+          selective:   ['✓ extracção selectiva','var(--green)'],
+          scanned:     ['⚠ PDF digitalizado',  'var(--red)'],
+          error:       ['⚠ erro na extracção', 'var(--red)'],
+        };
+        const [txt, col] = MAP[status] || ['?','var(--dim)'];
+        statusEl.textContent = txt; statusEl.style.color = col;
+        if (status === 'scanned') showScannedWarning(name);
+      }
+    }
+  });
+}
+
+function showScannedWarning(fname) {
+  let warn = document.getElementById('scannedWarn');
+  if (!warn) {
+    warn = document.createElement('div'); warn.id = 'scannedWarn';
+    warn.style.cssText = 'margin-top:10px;padding:10px 12px;background:#fdf0ee;border:1px solid #e0b0aa;border-radius:3px;font-size:12px;color:#8a2a1e;line-height:1.55;';
+    document.getElementById('goBtn').parentNode.insertBefore(warn, document.getElementById('goBtn'));
+  }
+  warn.innerHTML = `<strong>⚠ PDF digitalizado detectado</strong><br>${fname} parece ser composto maioritariamente por imagens. A análise será limitada. Solicitar ao proponente PDF em formato texto pesquisável.`;
+}
+
+// ── SYSTEM PROMPT ──────────────────────────────────────────────────────────
+function buildSystem(dt, cat, sec, loc, mode) {
+  const sectExtra = sec.startsWith('Mineiro')
+    ? '\n- Decreto 26/2004: programa de encerramento da mina, caução financeira, comité orientador, termo de responsabilização ambiental'
+    : sec.startsWith('Petrolífero')
+    ? '\n- Decreto 56/2010: plano de descomissionamento e reabilitação (Art.14), grupo inter-institucional'
+    : '';
+  const locExtra = loc === 'costeiro' ? '\nATENÇÃO — zona costeira/marinha: verificar Decreto 45/2006 e Decreto 97/2020.'
+    : loc === 'area_conservacao' ? '\nATENÇÃO — próximo de área de conservação: verificar questões fatais com especial rigor.'
+    : loc === 'kba' ? '\nATENÇÃO — próximo de KBA: PGCB deve ter objectivo de Ganho Líquido (não apenas NPL), conforme Art.4.2 DM 55/2022.'
+    : '';
+  const docScope = {
+    'PGA': `ÂMBITO DO DOCUMENTO — PGA (Plano de Gestão Ambiental):\nO PGA é avaliado contra Art. 11.2.n do Decreto 54/2015 e Secção IX da DM 129/2006. NÃO flags a ausência do REIA. Verificar: programas de monitorização, programa de controlo de risco e emergência, correspondência entre impactos e medidas, calendários. NÃO APLICÁVEL ao PGA: questões fatais, linha de base de biodiversidade — marcar ⚪ N/A.`,
+    'PGCB_PREL': `ÂMBITO DO DOCUMENTO — PGCB Preliminar:\nAvaliar contra Art. IV.1.1 do DM 55/2022. Verificar os 14 elementos de conteúdo mínimo. Adicional: (1) ano de referência vs início das operações; (2) necessidade GL vs NPL para KBAs; (3) categorias de biodiversidade cobertas.`,
+    'PGCB_FINAL': `ÂMBITO DO DOCUMENTO — PGCB Final:\nAvaliar contra Art. IV.1.2 + Anexo I do DM 55/2022. Pontos críticos: (1) Ano de referência vs início real das operações [Art.4(1)]; (2) NPL vs GL por KBA vs não-KBA, uplift ≥15% [Art.4(2)(3)]; (3) Obrigações diferidas ou excluídas [Art.III.6(b)(c)]; (4) Áreas receptoras identificadas [Sec.II.5]; (5) Consistência buffer vs parâmetros métrica; (6) Impactos indirectos integrados nas metas; (7) Permanência — mecanismo de financiamento [Art.III.6(g)].`,
+    'EPDA': `ÂMBITO DO DOCUMENTO — EPDA & TdR (Termo de Referência para o EIA):\nAvaliar contra Art. 10 do Decreto 54/2015. NÃO flags a ausência do REIA.\nFOCO PRINCIPAL: Qualidade do Termo de Referência (TdR) — o TdR é o produto regulatório central do EPDA; é aqui que se define o âmbito do EIA e onde se pode assegurar que questões críticas são obrigatoriamente estudadas. A secção ANÁLISE DO TERMO DE REFERÊNCIA é OBRIGATÓRIA para EPDAs.\nVerificar se o TdR inclui e delimita adequadamente cada um dos seguintes componentes:\nA. ENQUADRAMENTO E ÂMBITO: Descrição completa do projecto, área de influência directa e indirecta, fase de ciclo de vida coberta, alternativas a estudar, articulação com planos de uso de terra.\nB. LINHA DE BASE BIOFÍSICA: Qualidade da água/ar/solo; geomorfologia; oceanografia e batimetria (para projectos marinhos); baseline de ruído/vibração subaquático — OBRIGATÓRIO para projectos com fontes sonoras (sísmica, perfuração, operação de plataformas, construção offshore). Ausência do baseline acústico num projecto de sísmica é uma lacuna crítica.\nC. LINHA DE BASE BIODIVERSIDADE: Protocolos específicos por categoria de espécie-alvo: tartarugas marinhas (câmaras, transectos nocturnos em praias de nidificação); cetáceos (PAM passiva, transectos visuais); aves migratórias e costeiras; elasmobrânquios; espécies CR/EN do SIBMOZ. Amostragem obrigatória na época de maior sensibilidade (não apenas numa época). Referência explícita às 30 KBAs de Moçambique (MTA/WCS 2021) e ao SIBMOZ. Mapeamento de zonas de nidificação, agregação e corredores de migração.\nD. TRIAGEM PGCB (DM 55/2022 Art. V.2): A triagem da necessidade de PGCB é OBRIGATÓRIA na fase EPDA — o TdR deve prever a sua realização durante o EIA. Verificar se o TdR prevê: (i) avaliação GL vs NPL — GL obrigatório para KBAs e habitats de alto valor de biodiversidade (Anexo V Decreto 54/2015); (ii) definição do ano de referência para contrabalanços antes do início das operações; (iii) identificação de áreas receptoras.\nE. METODOLOGIA DE AVALIAÇÃO DE IMPACTOS: Critérios de significância definidos; avaliação cumulativa (incl. outros projectos na área); impactos indirectos; hierarquia de mitigação explícita (evitar > minimizar > restaurar > compensar); impactos sobre serviços de ecossistema.\nF. RESTRIÇÕES OPERACIONAIS SAZONAIS: O TdR deve exigir que o EIA produza uma matriz de restrições sazonais com janelas operacionais baseadas em fenologia (nidificação, migração, desova, parto de mamíferos marinhos, épocas de pesca). Para offshore/marinho: calendário de tartarugas marinhas, períodos de veda de pesca, janelas de actividade de cetáceos.\nG. PGA: Requisitos mínimos: programas de monitorização de biodiversidade com indicadores e periodicidade; plano de emergência/derrame. Para sector petrolífero (Decreto 56/2010): plano de descomissionamento e reabilitação; protocolo de resposta a emergências.\nH. PARTICIPAÇÃO PÚBLICA NA FASE EIA: O TdR deve assegurar PP conforme DM 130/2006 (≥20% universo afectado, relatório de PP, mecanismo de reclamações).\nI. REI (APENAS Cat. A+, DM 118/2022): O TdR deve prever realização do REI. Se o projecto for classificado Cat. A mas deveria ser A+, a ausência do REI no TdR é questão crítica nível 1.\nAVISO CATEGORIZAÇÃO: Verificar se o EPDA conclui erroneamente Cat. A quando o projecto deveria ser A+ — projectos offshore de grande escala, marinhos em zonas sensíveis, próximos de áreas de conservação ou KBAs devem ser escrutinados contra os critérios do Decreto 54/2015 Anexo I.`,
+    'REIA': `ÂMBITO DO DOCUMENTO — REIA:\nAvaliar contra Art. 11 do Decreto 54/2015 e DM 129/2006. Aplicar análise completa de todos os módulos.`,
+    'EAS': `ÂMBITO DO DOCUMENTO — EAS:\nAvaliar contra Art. 12 do Decreto 54/2015. Categorização B — questões fatais e PGCB são menos prováveis mas verificar. Não aplicar requisitos de Cat. A+/A.`
+  };
+  const scopeNote = mode === 'standalone'
+    ? `\nMODO: ANÁLISE DE DOCUMENTO ISOLADO. NÃO flags a ausência de outros documentos do processo — esses podem existir separadamente.\n${docScope[dt] || ''}`
+    : `\nMODO: REVISÃO DE SUBMISSÃO COMPLETA. Verificar consistência entre documentos e completude do conjunto.`;
+  return `És um analista especializado em avaliação de impacto ambiental em Moçambique. A tua função é analisar documentos do processo de AIA e produzir um relatório estruturado de conformidade legal.
+ÂMBITO — Foco PRIMÁRIO: Ambiente e biodiversidade (linha de base, hierarquia de mitigação, contrabalanços, questões fatais, KBAs). Foco SECUNDÁRIO: Conformidade processual e estrutural. FORA DE ÂMBITO: Análise aprofundada de reassentamento e saúde ocupacional — sinalizar apenas.
+${scopeNote}
+DOCUMENTO: ${dt||'?'} | CATEGORIA: ${cat||'?'} | SECTOR: ${sec||'?'} | LOCALIZAÇÃO: ${loc||'?'}
+LEGISLAÇÃO:
+- Decreto 54/2015 — Regulamento de AIA (categorização, conteúdo EPDA/EIA/EAS/PGA, questões fatais Anexo V)
+- DM 129/2006 — Directiva Geral EIA (estrutura mínima REIA, baseline, impactos, PGA)
+- DM 130/2006 — Participação Pública (mínimo 20% do universo afectado)
+- DM 55/2022 — Contrabalanços de Biodiversidade (PGCB, métricas, NPL/GL, financiamento)
+- DM 118/2022 — REI: APENAS para Categoria A+. NUNCA flags a ausência de REI para projectos que não sejam A+.
+- Decreto 18/2004 — Padrões de Qualidade Ambiental | Decreto 83/2014 — Resíduos Perigosos
+- Decreto 25/2008 — Espécies Exóticas Invasoras | Lei 5/2017 + Dec. 89/2017 — Biodiversidade${sectExtra}
+${locExtra}
+TRÊS NÍVEIS:
+- NÍVEL 1 — DEFINITIVO: Requisito legal verificável. Usar: "não cumpre Art. X do Decreto Y", "está ausente".
+- NÍVEL 2 — FUNDAMENTADO: Adequação e consistência interna. Usar: "a adequação é questionável".
+- NÍVEL 3 — INDICATIVO: Qualidade técnica. Usar: "requer atenção", "não há evidência de".
+QUESTÕES FATAIS (Anexo V Decreto 54/2015) — verificar se o documento demonstra explicitamente ausência de impactos em:
+1. Áreas de protecção total ou zonas de protecção total de áreas de conservação
+2. Habitats com ≥10% pop. global/nacional de espécies CR ou EN
+3. Habitats com ≥95% pop. global/nacional de espécies endémicas/distribuição restrita
+4. Habitats com ≥95% pop. global/nacional de espécies migratórias/congregatórias
+5. Áreas cruciais para serviços de ecossistema à escala nacional/provincial/distrital
+Verificar referência ao SIBMOZ e às 30 KBAs de Moçambique.
+PGCB (DM 55/2022) — verificar: obrigatoriedade; NPL vs GL (GL obrigatório para KBAs e habitats de alto valor de biodiversidade nos termos do Anexo V do Decreto 54/2015, uplift ≥15%); ano de referência vs início das operações; áreas receptoras identificadas; obrigações diferidas ou excluídas; consistência buffer vs métricas; impactos indirectos; permanência e mecanismo de financiamento (conta bancária Moçambique, ≥50% antes da licença de operação).
+PADRÕES IFC/EQUADOR: NÃO são obrigação legal por defeito em Moçambique. Aplicar APENAS se o proponente os invocar explicitamente no documento (financiamento IFC, adesão aos Princípios do Equador, ou compromisso voluntário documentado). A obrigação legal base é sempre a legislação nacional moçambicana. Não flags a ausência de conformidade IFC como lacuna legal a menos que o proponente os tenha invocado.
+FORMATO DE SAÍDA — usar exactamente estes cabeçalhos ##:
+## IDENTIFICAÇÃO
+## SEMÁFORO EXECUTIVO
+[tabela: Conformidade Estrutural | Questões Fatais | Linha de Base Biodiversidade | Hierarquia de Mitigação | PGCB/Contrabalanços | Participação Pública | Água e Resíduos | Requisitos Sectoriais — com 🔴/🟡/🟢/⚪]
+${dt === 'EPDA' ? `## ANÁLISE DO TERMO DE REFERÊNCIA
+[tabela com 5 colunas: Componente | Ref. Legal | Presente no TdR (✓ completo / ◑ parcial / ✗ ausente) | Avaliação | Recomendação Específica para o TdR
+Cobrir obrigatoriamente: A. Enquadramento/Âmbito | B. Linha de Base Biofísica (incl. baseline acústico se marinho) | C. Linha de Base Biodiversidade (protocolos por espécie-alvo, calendário sazonal) | D. Triagem PGCB (DM 55/2022 Art. V.2) | E. Metodologia de Impactos | F. Restrições Operacionais Sazonais | G. PGA | H. Participação Pública | I. REI (se A+)
+Nas recomendações: ser específico sobre o que deve constar explicitamente no TdR — não generalizar.]
+` : ''}## QUESTÕES CRÍTICAS — NÍVEL 1
+[numeradas: **Lacuna** | **Base legal** | **Impacto no licenciamento** | **Acção requerida**]
+## BIODIVERSIDADE E CONTRABALANÇOS
+### Linha de Base
+### Hierarquia de Mitigação
+### Necessidade de PGCB
+### Adequação do PGCB (se presente)
+## LACUNAS E OBSERVAÇÕES — NÍVEL 2 E 3
+## SINALIZAÇÕES — OUTROS DOMÍNIOS
+## MINUTA DE COMUNICAÇÃO AO PROPONENTE
+ESCRITA: Português de Moçambique, ortografia pré-1990 (óptimo, acção, facto, directo, objectivo). Citar artigos e diplomas exactos. Não repetir observações entre secções.`;
+}
+
+// ── MAIN ANALYSIS ──────────────────────────────────────────────────────────
+async function go() {
+  if (!apiKey) { showKeyModal(); return; }
+
+  const dt  = document.getElementById('docType').value;
+  const mode = document.getElementById('mode').value;
+  const cat  = document.getElementById('category').value;
+  const sec  = document.getElementById('sector').value;
+  const loc  = document.getElementById('locCtx').value;
+  const proj = document.getElementById('projName').value;
+  const notes = document.getElementById('notes').value;
+  const pasteText = document.getElementById('pasteText').value;
+
+  if (!dt) { alert('Por favor seleccione o tipo de documento.'); return; }
+  if (!files.length && !pasteText && !notes) {
+    alert('Por favor carregue um documento, cole texto, ou forneça notas.'); return;
+  }
+
+  document.getElementById('goBtn').disabled = true;
+  document.getElementById('tabs').style.display = 'none';
+  document.getElementById('mc').innerHTML = `<div class="loading"><div class="spin"></div><div class="load-t">A processar…</div><div class="load-s">A extrair texto dos PDFs e a verificar conformidade com a legislação moçambicana de AIA.</div></div>`;
+
+  try {
+    const instruction = `Tipo: ${dt} | Categoria: ${cat||'?'} | Sector: ${sec||'?'} | Localização: ${loc||'?'}\n${proj?'Projecto: '+proj+'\n':''}${notes?'Notas: '+notes+'\n':''}\nAnalisa o(s) documento(s) abaixo e produz o relatório completo.`;
+    let userMsg = instruction;
+
+    if (pasteText) userMsg += `\n\n--- TEXTO DO DOCUMENTO (colado pelo analista) ---\n${pasteText.substring(0, 200000)}`;
+
+    for (const f of files) {
+      const fc = await readFile(f);
+      userMsg += `\n\n--- DOCUMENTO: ${fc.name} ---\n${fc.data.substring(0, 200000)}`;
+    }
+
+    // Call DeepSeek API (OpenAI-compatible format)
+    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        max_tokens: 8000,
+        temperature: 0.2,
+        messages: [
+          { role: 'system', content: buildSystem(dt, cat, sec, loc, mode) },
+          { role: 'user',   content: userMsg }
+        ]
+      })
+    });
+
+    if (!resp.ok) {
+      const e = await resp.json().catch(() => ({}));
+      const msg = e.error?.message || `HTTP ${resp.status}`;
+      // Handle auth error specifically
+      if (resp.status === 401 || resp.status === 403) {
+        apiKey = null; sessionStorage.removeItem('aia_dskey'); updateKeyStatus();
+        throw new Error('Chave API inválida ou expirada. ' + msg);
+      }
+      throw new Error(msg);
+    }
+
+    const data = await resp.json();
+    const raw = data.choices?.[0]?.message?.content || '';
+    if (!raw) throw new Error('Resposta vazia da API DeepSeek.');
+
+    analysis = { raw, dt, cat, sec, proj, ts: new Date().toLocaleString('pt-MZ'), filenames: files.map(f => f.name) };
+    document.getElementById('tabs').style.display = 'flex';
+    activeTab = 'results';
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===0));
+    renderResults();
+
+  } catch(e) {
+    document.getElementById('mc').innerHTML = `<div class="err"><strong>Erro na análise</strong>${e.message}</div>`;
+    document.getElementById('tabs').style.display = 'none';
+  } finally {
+    document.getElementById('goBtn').disabled = false;
+    hideExtPopup();
+  }
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
+function switchTab(tab, el) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  tab === 'results' ? renderResults() : renderRaw();
+}
+function renderResults() {
+  if (!analysis) return;
+  const secs = parse(analysis.raw);
+  let h = `<div class="scope">ⓘ Foco em ambiente e biodiversidade. Reassentamento e saúde ocupacional sinalizados mas não analisados em profundidade.</div>
+    <div class="rh"><div><div class="rp">${analysis.proj||'Projecto'}</div><div class="rs">${analysis.dt} · Cat. ${analysis.cat||'?'} · ${analysis.sec||'—'}</div></div><div class="rt">${analysis.ts}</div></div>
+    <button class="copy-btn" onclick="copyAll()">⊞ Copiar texto completo</button>
+    <button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar Word</button>`;
+  if (!secs.length) {
+    h += `<div class="sb">${fmt(analysis.raw)}</div>`;
+  } else {
+    secs.forEach((s,i) => {
+      const open = i < 5;
+      h += `<div class="asec"><div class="ah" onclick="tog(${i})"><span class="snum">${String(i+1).padStart(2,'0')}</span><span class="stitle">${s.t}</span><span class="stog" id="t${i}">${open?'▲':'▼'}</span></div><div class="sb${open?'':' collapsed'}" id="b${i}">${fmt(s.c)}</div></div>`;
+    });
+  }
+  document.getElementById('mc').innerHTML = h;
+}
+function tog(i) {
+  const b=document.getElementById('b'+i), t=document.getElementById('t'+i);
+  t.textContent = b.classList.toggle('collapsed') ? '▼' : '▲';
+}
+function renderRaw() {
+  if (!analysis) return;
+  document.getElementById('mc').innerHTML = `<button class="copy-btn" onclick="copyAll()">⊞ Copiar texto</button><button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar Word</button><div class="raw">${esc(analysis.raw)}</div>`;
+}
+function parse(txt) {
+  const r=[]; let cur=null;
+  for (const l of txt.split('\n')) {
+    const m=l.match(/^##\s+(.+)/);
+    if (m) { if(cur) r.push(cur); cur={t:m[1].trim(),c:''}; }
+    else if(cur) cur.c+=l+'\n';
+  }
+  if(cur) r.push(cur);
+  return r;
+}
+function fmt(txt) {
+  if (!txt) return '';
+  let h = esc(txt.trim());
+  h = h.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  h = h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  h = h.replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
+  h = h.replace(/`([^`\n]+)`/g,'<code>$1</code>');
+  h = h.replace(/🔴/g,'<span class="st-r">🔴 NÃO CONFORME</span>');
+  h = h.replace(/🟡/g,'<span class="st-y">🟡 LACUNAS</span>');
+  h = h.replace(/🟢/g,'<span class="st-g">🟢 CONFORME</span>');
+  h = h.replace(/⚪/g,'<span class="st-n">⚪ N/A</span>');
+  const lines = h.split('\n'); const out = []; let inT=false, hDone=false;
+  for (const ln of lines) {
+    if (/^\|.+\|$/.test(ln)) {
+      if (!inT) { out.push('<table><thead>'); inT=true; hDone=false; }
+      if (!hDone && /^[\s|:\-]+$/.test(ln.replace(/[^|:\-\s]/g,''))) { out.push('</thead><tbody>'); hDone=true; continue; }
+      const tag = hDone?'td':'th';
+      const cells = ln.split('|').slice(1,-1).map(c=>`<${tag}>${c.trim()}</${tag}>`).join('');
+      out.push(`<tr>${cells}</tr>`);
+    } else {
+      if(inT){ out.push('</tbody></table>'); inT=false; }
+      out.push(ln);
+    }
+  }
+  if(inT) out.push('</tbody></table>');
+  h = out.join('\n');
+  h = h.replace(/^[-•]\s+(.+)$/gm,'<li>$1</li>');
+  h = h.replace(/(<li>[\s\S]*?<\/li>\n?)+/g, m=>`<ul>${m}</ul>`);
+  h = h.replace(/^\d+\.\s+(.+)$/gm,'<li>$1</li>');
+  h = '<p>'+h.replace(/\n\n/g,'</p><p>')+'</p>';
+  h = h.replace(/<p>\s*<\/p>/g,'');
+  h = h.replace(/<p>(<[htuo])/g,'$1');
+  h = h.replace(/(<\/[htuo][l3r]e?>)\s*<\/p>/g,'$1');
+  return h;
+}
+function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── COPY / EXPORT ──────────────────────────────────────────────────────────
+async function copyAll(){
+  if(!analysis) return;
+  try { await navigator.clipboard.writeText(analysis.raw); } catch(e) {
+    const ta=document.createElement('textarea'); ta.value=analysis.raw;
+    ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta);
+    ta.select(); try{document.execCommand('copy');}catch(e2){}
+    document.body.removeChild(ta);
+  }
+  const btns=document.querySelectorAll('.copy-btn');
+  btns.forEach(b=>{const o=b.textContent;b.textContent='✓ Copiado';setTimeout(()=>b.textContent=o,2000);});
+}
+function exportWord(){
+  if(!analysis) return;
+  const meta=`${analysis.dt} | Categoria ${analysis.cat||'?'} | ${analysis.sec||'—'} | ${analysis.ts}`;
+  function toWordHtml(txt){
+    let h=txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    h=h.replace(/((?:^\|.+\|$\n?)+)/gm,tableBlock=>{
+      const rows=tableBlock.trim().split('\n');
+      let html='<table style="border-collapse:collapse;width:100%;margin:8pt 0;font-size:10pt;font-family:Arial">';
+      let isHeader=true;
+      for(const row of rows){
+        if(/^[\s|:\-]+$/.test(row.replace(/[^|:\-\s]/g,''))){isHeader=false;continue;}
+        const cells=row.split('|').slice(1,-1);
+        const tag=isHeader?'th':'td';
+        const bg=isHeader?'background:#5a3e1b;color:#fff':'';
+        html+='<tr>'+cells.map(c=>`<${tag} style="border:1px solid #d4cfc4;padding:4pt 6pt;${bg}">${c.trim()}</${tag}>`).join('')+'</tr>';
+        if(isHeader)isHeader=false;
+      }
+      return html+'</table>';
+    });
+    h=h.replace(/^## (.+)$/gm,'</p><h2 style="color:#5a3e1b;font-family:Arial;font-size:14pt;margin-top:16pt">$1</h2><p style="font-family:Arial;font-size:11pt;margin:4pt 0">')
+       .replace(/^### (.+)$/gm,'</p><h3 style="color:#8a6030;font-family:Arial;font-size:12pt;margin-top:10pt">$1</h3><p style="font-family:Arial;font-size:11pt;margin:4pt 0">')
+       .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+       .replace(/^[-•]\s+(.+)$/gm,'</p><p style="font-family:Arial;font-size:11pt;margin:2pt 0 2pt 20pt">&#x2022;&nbsp;$1</p><p style="font-family:Arial;font-size:11pt;margin:4pt 0">')
+       .replace(/🔴[^<]*/g,'<span style="color:#8a2a1e;font-weight:bold">🔴 NÃO CONFORME</span> ')
+       .replace(/🟡[^<]*/g,'<span style="color:#7a5c00;font-weight:bold">🟡 LACUNAS</span> ')
+       .replace(/🟢[^<]*/g,'<span style="color:#1e5c30;font-weight:bold">🟢 CONFORME</span> ')
+       .replace(/⚪[^<]*/g,'<span style="color:#9a9490">⚪ N/A</span> ')
+       .replace(/\n/g,'<br>');
+    return h;
+  }
+  const body=toWordHtml(analysis.raw);
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>@page{margin:2.5cm}body{font-family:Arial,sans-serif;font-size:11pt;line-height:1.6;color:#1a1714}h1{font-size:16pt;color:#5a3e1b}h2{font-size:14pt;color:#5a3e1b;margin-top:16pt}h3{font-size:12pt;color:#8a6030;margin-top:10pt}.meta{font-size:9pt;color:#888;margin-bottom:16pt}hr{border:none;border-top:2pt solid #5a3e1b;margin:12pt 0}</style></head><body><h1>Relatório de Análise de Conformidade AIA</h1><p class="meta">${esc(meta)}</p><hr><p style="font-family:Arial;font-size:11pt;margin:4pt 0">${body}</p></body></html>`;
+  const blob=new Blob(['﻿',html],{type:'application/msword'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const base=(analysis.filenames&&analysis.filenames.length>0?analysis.filenames[0].replace(/\.[^.]+$/,''):(analysis.proj||'Projecto'));
+  a.href=url; a.download=(base+'_analise_'+new Date().toISOString().slice(0,10)+'.doc').replace(/[^a-zA-Z0-9_\-\.]/g,'_');
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+</script>
+</body>
+</html>
