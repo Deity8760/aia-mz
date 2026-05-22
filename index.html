@@ -911,20 +911,22 @@ function fmt(txt) {
   h = h.replace(/🟡/g,'<span class="st-y">🟡 LACUNAS</span>');
   h = h.replace(/🟢/g,'<span class="st-g">🟢 CONFORME</span>');
   h = h.replace(/⚪/g,'<span class="st-n">⚪ N/A</span>');
+  const isSepRow = ln => { const cells=ln.split('|').slice(1,-1); return cells.length>0 && cells.every(c=>/^\s*:?-+:?\s*$/.test(c)); };
   const lines = h.split('\n'); const out = []; let inT=false, hDone=false;
   for (const ln of lines) {
     if (/^\|.+\|$/.test(ln)) {
       if (!inT) { out.push('<table><thead>'); inT=true; hDone=false; }
-      if (!hDone && /^[\s|:\-]+$/.test(ln.replace(/[^|:\-\s]/g,''))) { out.push('</thead><tbody>'); hDone=true; continue; }
+      if (!hDone && isSepRow(ln)) { out.push('</thead><tbody>'); hDone=true; continue; }
+      if (hDone && isSepRow(ln)) { continue; } // skip any stray separator rows in body
       const tag = hDone?'td':'th';
       const cells = ln.split('|').slice(1,-1).map(c=>`<${tag}>${c.trim()}</${tag}>`).join('');
       out.push(`<tr>${cells}</tr>`);
     } else {
-      if(inT){ out.push('</tbody></table>'); inT=false; }
+      if(inT){ out.push(hDone?'</tbody></table>':'</thead></table>'); inT=false; hDone=false; }
       out.push(ln);
     }
   }
-  if(inT) out.push('</tbody></table>');
+  if(inT) out.push(hDone?'</tbody></table>':'</thead></table>');
   h = out.join('\n');
   h = h.replace(/^[-•]\s+(.+)$/gm,'<li>$1</li>');
   h = h.replace(/(<li>[\s\S]*?<\/li>\n?)+/g, m=>`<ul>${m}</ul>`);
