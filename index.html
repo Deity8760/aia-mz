@@ -145,6 +145,75 @@
   .modal-btn:hover { background: var(--mid); }
   .modal-hint { margin-top: 12px; font-size: 11px; color: var(--dim); text-align: center; line-height: 1.5; }
 
+  /* ── INFO BUTTON ── */
+  .info-trigger {
+    display: flex; align-items: center; gap: 7px;
+    padding: 10px 16px 14px; cursor: pointer;
+    border: none; background: none; width: 100%; text-align: left;
+  }
+  .info-trigger:hover .info-icon { border-color: var(--mid); color: var(--mid); }
+  .info-icon {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1.5px solid var(--dim); color: var(--dim);
+    font-family: var(--serif); font-size: 11px; font-style: italic; font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.15s; line-height: 1;
+  }
+  .info-label { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.08em; }
+
+  /* ── INFO MODAL ── */
+  .info-overlay {
+    position: fixed; inset: 0; background: rgba(26,23,20,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; backdrop-filter: blur(2px);
+  }
+  .info-overlay.hidden { display: none; }
+  .info-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0; max-width: 560px; width: 94%;
+    max-height: 88vh; overflow-y: auto;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.22);
+  }
+  .info-head {
+    padding: 20px 28px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    position: sticky; top: 0; background: var(--surface); z-index: 1;
+  }
+  .info-head-left { display: flex; flex-direction: column; gap: 3px; }
+  .info-mono { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: var(--mid); }
+  .info-title { font-size: 15px; font-weight: 500; color: var(--text); }
+  .info-close {
+    background: none; border: none; cursor: pointer;
+    font-size: 18px; color: var(--dim); padding: 0 2px; line-height: 1;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .info-close:hover { color: var(--text); }
+  .info-body { padding: 20px 28px 24px; display: flex; flex-direction: column; gap: 18px; }
+  .info-sec-title {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 7px;
+  }
+  .info-sec p { font-size: 13px; color: var(--muted); line-height: 1.75; margin-bottom: 6px; }
+  .info-sec p:last-child { margin-bottom: 0; }
+  .info-levels { display: flex; flex-direction: column; gap: 8px; }
+  .info-level {
+    padding: 10px 14px; border-radius: var(--r);
+    border: 1px solid var(--border-dim); background: var(--bg);
+  }
+  .info-level-head { font-family: var(--mono); font-size: 11px; font-weight: 500; margin-bottom: 4px; }
+  .info-level-body { font-size: 12px; color: var(--muted); line-height: 1.65; }
+  .info-level.l1 { border-left: 3px solid var(--red); }
+  .info-level.l2 { border-left: 3px solid var(--yellow); }
+  .info-level.l3 { border-left: 3px solid var(--dim); }
+  .info-level.l1 .info-level-head { color: var(--red); }
+  .info-level.l2 .info-level-head { color: var(--yellow); }
+  .info-level.l3 .info-level-head { color: var(--muted); }
+  .info-warn {
+    padding: 10px 14px; background: var(--yellow-bg);
+    border: 1px solid #e0d080; border-radius: var(--r);
+    font-size: 12px; color: var(--yellow); line-height: 1.6;
+  }
+
   /* ── EXTRACTION POPUP ── */
   .ext-overlay {
     position: fixed; inset: 0; background: rgba(26,23,20,0.45);
@@ -186,6 +255,65 @@
     <input class="modal-input" type="password" id="keyInput" placeholder="sk-••••••••••••••••••••••••••••••••" autocomplete="off" />
     <button class="modal-btn" id="keySaveBtn" onclick="saveApiKey()">Confirmar e continuar</button>
     <div class="modal-hint">A chave destina-se a ser usada directamente com a API DeepSeek. Não é armazenada de forma permanente.</div>
+  </div>
+</div>
+
+<!-- ── INFO MODAL ── -->
+<div class="info-overlay hidden" id="infoOverlay" onclick="hideInfoModal(event)">
+  <div class="info-box" onclick="event.stopPropagation()">
+    <div class="info-head">
+      <div class="info-head-left">
+        <div class="info-mono">AIA·MZ</div>
+        <div class="info-title">Sobre esta ferramenta</div>
+      </div>
+      <button class="info-close" onclick="hideInfoModal()">×</button>
+    </div>
+    <div class="info-body">
+
+      <div class="info-sec">
+        <div class="info-sec-title">O que é</div>
+        <p>O AIA·MZ é um instrumento de apoio técnico à revisão de documentos de Avaliação de Impacto Ambiental (AIA) em Moçambique. Destina-se a técnicos da DINAMC/MAAP e a consultores ambientais que necessitem de uma primeira verificação de conformidade legal antes da análise formal.</p>
+        <p>Não é um sistema de decisão administrativo nem um substituto do parecer técnico qualificado — é um auxiliar de revisão.</p>
+      </div>
+
+      <div class="info-sec">
+        <div class="info-sec-title">Como utilizar</div>
+        <p><strong>1. Configure o contexto</strong> — seleccione o tipo de documento (REIA, EPDA, EAS, PGCB, PGA), a categoria do projecto, o sector e o contexto de localização. Quanto mais preciso o contexto, mais dirigida é a análise.</p>
+        <p><strong>2. Carregue o documento</strong> — arraste o PDF para a área indicada, ou cole directamente o texto de secções relevantes na caixa de texto. Pode também adicionar notas do analista para orientar o foco da análise.</p>
+        <p><strong>3. Clique em Analisar</strong> — a ferramenta extrai o texto, envia-o para o modelo de linguagem e devolve um relatório estruturado com semáforo executivo, questões críticas, análise de biodiversidade e contrabalanços, e uma minuta de comunicação ao proponente.</p>
+      </div>
+
+      <div class="info-sec">
+        <div class="info-sec-title">De onde vem a análise</div>
+        <p>A análise é gerada por um modelo de linguagem (DeepSeek) instruído com a legislação moçambicana de AIA: Decreto 54/2015, DM 55/2022 (PGCB), DM 118/2022 (REI), DM 129–130/2006, Decreto 56/2010, Lei 5/2017 e diplomas conexos.</p>
+        <p>O modelo é orientado para citar artigos e diplomas exactos, identificar questões fatais (Anexo V do Decreto 54/2015), distinguir NPL de GL para KBAs, e redigir comunicações formais em português de Moçambique.</p>
+      </div>
+
+      <div class="info-sec">
+        <div class="info-sec-title">Limitações</div>
+        <div class="info-warn">⚠ Esta ferramenta produz análises de apoio, não decisões administrativas. Os resultados devem ser verificados por um técnico qualificado antes de qualquer acção formal.</div>
+        <p style="margin-top:10px;">PDFs digitalizados (compostos por imagens) têm extracção de texto limitada — a análise pode ser incompleta. Documentos muito longos são processados por extracção selectiva das secções de maior relevância regulatória, o que significa que algumas secções podem não ser analisadas. O modelo pode omitir aspectos ou conter imprecisões, especialmente em documentos muito técnicos ou com terminologia não padronizada.</p>
+      </div>
+
+      <div class="info-sec">
+        <div class="info-sec-title">Os três níveis de análise</div>
+        <div class="info-levels">
+          <div class="info-level l1">
+            <div class="info-level-head">Nível 1 — Definitivo</div>
+            <div class="info-level-body">Requisito legal verificável e directamente citável. A lacuna ou incumprimento é claro face a um artigo ou diploma específico. Constitui base suficiente para uma solicitação formal ao proponente ou para fundamentar uma decisão de inadmissibilidade. Linguagem: "não cumpre o Art. X", "está ausente", "viola o Decreto Y".</div>
+          </div>
+          <div class="info-level l2">
+            <div class="info-level-head">Nível 2 — Fundamentado</div>
+            <div class="info-level-body">Adequação e consistência interna do documento. O requisito legal existe mas a sua concretização no documento é insuficiente, contraditória ou questionável. Suporta decisões técnicas mas requer julgamento do revisor para determinar se justifica exigência formal. Linguagem: "a adequação é questionável", "a consistência interna é insuficiente".</div>
+          </div>
+          <div class="info-level l3">
+            <div class="info-level-head">Nível 3 — Indicativo</div>
+            <div class="info-level-body">Qualidade técnica e boas práticas. Observações que não configuram incumprimento legal directo mas que afectam a robustez técnica do documento. Para orientação interna e melhoria — não constituem base para exigência formal nem para inadmissibilidade. Linguagem: "requer atenção", "não há evidência de", "recomenda-se".</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -303,6 +431,10 @@
     <div class="sb-sec" style="border-bottom:none;margin-top:auto;">
       <button class="btn" id="goBtn" onclick="go()">▶ Analisar</button>
     </div>
+    <button class="info-trigger" onclick="showInfoModal()">
+      <span class="info-icon">i</span>
+      <span class="info-label">Sobre esta ferramenta</span>
+    </button>
   </aside>
   <!-- MAIN -->
   <main class="main">
@@ -991,6 +1123,19 @@ function exportWord(){
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
+
+// ── INFO MODAL ─────────────────────────────────────────────────────────────
+function showInfoModal() {
+  document.getElementById('infoOverlay').classList.remove('hidden');
+}
+function hideInfoModal(e) {
+  if (!e || e.target === document.getElementById('infoOverlay')) {
+    document.getElementById('infoOverlay').classList.add('hidden');
+  }
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('infoOverlay').classList.add('hidden');
+});
 </script>
 </body>
 </html>
