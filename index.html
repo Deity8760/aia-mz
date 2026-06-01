@@ -122,6 +122,32 @@
   .copy-btn:hover { border-color:var(--mid); color:var(--accent); background:var(--soft); }
   ::-webkit-scrollbar { width:4px; }
   ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  /* SESSION */
+  .sess-panel { padding:12px 16px; border-bottom:1px solid var(--border-dim); background:var(--surface2); }
+  .sess-title { font-family:var(--mono); font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--mid); margin-bottom:8px; }
+  .sess-doc { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); padding:3px 0; font-family:var(--mono); }
+  .sess-doc-ok { color:var(--green); font-size:12px; }
+  .btn-final { width:100%; padding:11px; background:var(--green); border:none; color:#fff; font-family:var(--mono); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; cursor:pointer; border-radius:var(--r); transition:background 0.15s; margin-top:8px; }
+  .btn-final:hover:not(:disabled) { background:#155225; }
+  .btn-final:disabled { opacity:0.45; cursor:not-allowed; }
+  /* NEXT DOC PANEL */
+  .ndp { margin-top:24px; border:1px solid var(--border); border-radius:var(--r); background:var(--surface); overflow:hidden; }
+  .ndp-head { padding:12px 16px; background:var(--surface2); border-bottom:1px solid var(--border); }
+  .ndp-title { font-family:var(--mono); font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent); }
+  .ndp-body { padding:14px 16px; }
+  .ndp-row { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border-dim); }
+  .ndp-row:last-child { border-bottom:none; }
+  .ndp-badge { font-family:var(--mono); font-size:9px; padding:2px 6px; border-radius:2px; letter-spacing:0.06em; text-transform:uppercase; flex-shrink:0; }
+  .ndp-obl { background:var(--red-bg); color:var(--red); border:1px solid #e0b0aa; }
+  .ndp-opt { background:var(--yellow-bg); color:var(--yellow); border:1px solid #e0d080; }
+  .ndp-done { background:var(--green-bg); color:var(--green); border:1px solid #a0d4b0; }
+  .ndp-skip { background:var(--surface2); color:var(--dim); border:1px solid var(--border); }
+  .ndp-label { flex:1; font-size:12px; color:var(--muted); }
+  .ndp-btn { padding:5px 12px; background:var(--accent); border:none; color:#faf8f4; font-family:var(--mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; border-radius:var(--r); white-space:nowrap; flex-shrink:0; }
+  .ndp-btn:hover { background:var(--mid); }
+  .ndp-hint { font-size:11px; color:var(--dim); font-style:italic; margin-top:10px; padding-top:10px; border-top:1px solid var(--border-dim); }
+  /* NEXT DOC HINT IN SIDEBAR */
+  .ndoc-hint { margin:6px 0 0; padding:7px 10px; background:var(--soft); border:1px solid var(--border); border-radius:var(--r); font-family:var(--mono); font-size:10px; color:var(--accent); letter-spacing:0.05em; display:none; }
 
   /* ── API KEY MODAL ── */
   .modal-overlay {
@@ -426,7 +452,13 @@
       <textarea id="notes" rows="2" placeholder="Ex: Foco nos impactos sobre mangais."></textarea>
     </div>
     <div class="sb-sec" style="border-bottom:none;margin-top:auto;">
+      <div class="ndoc-hint" id="nextDocHint"></div>
       <button class="btn" id="goBtn" onclick="go()">▶ Analisar</button>
+    </div>
+    <div class="sess-panel" id="sessPanel" style="display:none;">
+      <div class="sess-title">Sessão actual</div>
+      <div id="sessDocs"></div>
+      <button class="btn-final" id="finalBtn" onclick="emitFinalParecer()">⊞ Emitir Parecer Final</button>
     </div>
     <button class="info-trigger" onclick="showInfoModal()">
       <span class="info-icon">i</span>
@@ -467,6 +499,271 @@
 // ── STATE ──────────────────────────────────────────────────────────────────
 let files = [], analysis = null, activeTab = 'results';
 let apiKey = sessionStorage.getItem('aia_dskey') || 'sk-56463591d26c4dd7a96a5c71697fec19';
+
+// ── SESSION ────────────────────────────────────────────────────────────────
+let session = { phase: null, category: null, sector: null, loc: null, proj: null, docs: [] };
+let pendingDocConfig = null; // set when user clicks "load next doc" button
+
+// Phase mapping — which session sequence does a docType belong to?
+function getPhase(dt) {
+  if (dt === 'EPDA') return 'EPDA';
+  if (dt === 'REIA' || dt === 'EAS') return dt;
+  if (dt === 'PGA') return 'PGA';
+  if (dt === 'PGCB_PREL' || dt === 'PGCB_FINAL') return dt;
+  return dt;
+}
+
+// Expected document sequences per phase
+const SESSION_DOCS = {
+  EPDA: {
+    mandatory: [
+      { key: 'epda_main',    label: 'EPDA — Documento Principal',               docType: 'EPDA', crossRef: null },
+      { key: 'comentarios',  label: 'Volume de Comentários / Consulta Pública', docType: 'EPDA', crossRef: 'comentarios' },
+    ],
+    optional: [],
+    skipLabels: ['Resumo Não-Técnico'],
+    catAplusKey: null
+  },
+  REIA: {
+    mandatory: [
+      { key: 'reia_main',    label: 'REIA — Volume I (Relatório Principal)',                          docType: 'REIA', crossRef: null },
+      { key: 'pga',          label: 'PGA — Plano de Gestão Ambiental',                               docType: 'PGA',  crossRef: 'pga' },
+      { key: 'comentarios',  label: 'Relatório de Consulta Pública',                                  docType: 'REIA', crossRef: 'comentarios' },
+    ],
+    optional: [
+      { key: 'specialist',   label: 'Estudos Especializados',                                         docType: 'REIA', crossRef: 'specialist', multiple: true },
+      { key: 'pgcb',         label: 'PGCB — Plano de Gestão de Contrabalanços de Biodiversidade',    docType: 'PGCB_PREL', crossRef: 'pgcb' },
+      { key: 'par',          label: 'PAR — Plano de Acção de Reassentamento',                        docType: 'REIA', crossRef: 'specialist' },
+    ],
+    skipLabels: ['Resumo Não-Técnico'],
+    catAplusKey: { key: 'ri', label: 'Parecer do Revisor Independente (obrigatório Cat. A+)', docType: 'REIA', crossRef: 'ri' }
+  },
+  EAS:       { mandatory: [{ key:'eas_main',   label:'EAS — Estudo Ambiental Simplificado', docType:'EAS',       crossRef:null }], optional:[], skipLabels:[], catAplusKey:null },
+  PGA:       { mandatory: [{ key:'pga_main',   label:'PGA — Plano de Gestão Ambiental',     docType:'PGA',       crossRef:null }], optional:[], skipLabels:[], catAplusKey:null },
+  PGCB_PREL: { mandatory: [{ key:'pgcb_prel',  label:'PGCB Preliminar',                     docType:'PGCB_PREL', crossRef:null }], optional:[], skipLabels:[], catAplusKey:null },
+  PGCB_FINAL:{ mandatory: [{ key:'pgcb_final', label:'PGCB Final',                          docType:'PGCB_FINAL',crossRef:null }], optional:[], skipLabels:[], catAplusKey:null },
+};
+
+// Cross-reference instructions injected into system prompt for subsequent docs
+const CROSSREF_INSTRUCTIONS = {
+  comentarios: `MODO: ANÁLISE DE VOLUME DE COMENTÁRIOS / CONSULTA PÚBLICA
+Tens acesso às análises dos documentos anteriores desta sessão (ver abaixo).
+Objectivos desta análise:
+(a) Verificar se as respostas do proponente às observações públicas resolvem as lacunas identificadas nas análises anteriores.
+(b) Identificar comentários públicos que sinalizem problemas de biodiversidade, habitat ou conformidade não detectados nas análises anteriores — estas são lacunas Nível 1 se não respondidas.
+(c) Avaliar se o processo de consulta cumpre o DM 130/2006 (prazos, notificações, acesso à informação).
+(d) Produzir secção adicional ## AVALIAÇÃO CRUZADA — COMENTÁRIOS VS. ANÁLISE ANTERIOR com tabela: Comentário | Questão sinalizada | Resposta do proponente | Adequação da resposta | Acção recomendada.`,
+
+  pga: `MODO: ANÁLISE CRUZADA — PGA VS. DOCUMENTO PRINCIPAL
+Tens acesso às análises dos documentos anteriores desta sessão (ver abaixo).
+Objectivos desta análise:
+(a) Verificar se o PGA implementa TODAS as medidas de mitigação identificadas na hierarquia de mitigação do documento principal.
+(b) Identificar medidas omitidas, sem cronograma, sem responsável definido, ou sem indicadores de monitorização.
+(c) Verificar se o PGA inclui plano de emergência/derrame e medidas para fase de construção, operação e descomissionamento.
+(d) Produzir secção adicional ## AVALIAÇÃO CRUZADA — PGA VS. REIA com tabela: Medida requerida pelo REIA | Presente no PGA | Adequação | Lacuna.`,
+
+  pgcb: `MODO: ANÁLISE CRUZADA — PGCB VS. IMPACTOS RESIDUAIS
+Tens acesso às análises dos documentos anteriores desta sessão (ver abaixo).
+Objectivos desta análise:
+(a) Verificar se o PGCB responde especificamente a cada impacto residual quantificado no documento principal.
+(b) Avaliar proporcionalidade dos contrabalanços face aos impactos residuais (DM 55/2022).
+(c) Verificar se a área receptora, métricas e período do contrabalanço estão adequadamente definidos.
+(d) Produzir secção adicional ## AVALIAÇÃO CRUZADA — PGCB VS. IMPACTOS RESIDUAIS com tabela: Impacto residual (REIA) | Contrabalanço proposto | Proporcionalidade | Conformidade DM 55/2022.`,
+
+  specialist: `MODO: ANÁLISE CRUZADA — ESTUDOS ESPECIALIZADOS VS. EIA/PGA
+Tens acesso às análises dos documentos anteriores desta sessão (ver abaixo).
+Objectivos desta análise:
+(a) Extrair todas as recomendações dos estudos especializados.
+(b) Verificar se cada recomendação foi incorporada no EIA e no PGA.
+(c) Identificar divergências entre recomendações dos estudos e medidas adoptadas — divergências não justificadas são lacunas Nível 1.
+(d) Produzir secção adicional ## AVALIAÇÃO CRUZADA — ESTUDOS ESPECIALIZADOS VS. EIA/PGA com tabela: Recomendação (Estudo) | Incorporada no EIA | Incorporada no PGA | Avaliação.`,
+
+  ri: `MODO: ANÁLISE CRUZADA — PARECER DO REVISOR INDEPENDENTE (DM 118/2022)
+Tens acesso às análises dos documentos anteriores desta sessão (ver abaixo).
+ATENÇÃO: Para projectos Cat. A+, o cumprimento do Parecer do RI é requisito legal obrigatório (DM 118/2022). Uma objecção do RI não respondida de forma adequada é questão fatal que inviabiliza o licenciamento.
+Objectivos desta análise:
+(a) Listar TODAS as objecções e recomendações do Revisor Independente.
+(b) Verificar sistematicamente se o EIA respondeu a cada uma.
+(c) Identificar objecções não resolvidas ou respondidas de forma inadequada ou superficial.
+(d) Produzir secção adicional ## AVALIAÇÃO CRUZADA — PARECER RI vs. EIA com tabela: Objecção/Recomendação RI | Referência no EIA | Resposta adequada | Estado | Acção requerida.
+Uma objecção marcada como não resolvida é automaticamente Questão Fatal Nível 1.`
+};
+
+function buildCrossRefContext() {
+  if (!session.docs.length) return '';
+  let ctx = `\n\n═══════════════════════════════════════════════════
+ANÁLISES ANTERIORES DESTA SESSÃO (${session.docs.length} documento(s) já analisado(s)):
+═══════════════════════════════════════════════════\n`;
+  session.docs.forEach((d, i) => {
+    ctx += `\n--- DOCUMENTO ${i+1}: ${d.label} (${d.filename}) ---\n${d.analysisText.substring(0, 40000)}\n`;
+  });
+  ctx += `\n═══════════════════════════════════════════════════\nFIM DAS ANÁLISES ANTERIORES\n═══════════════════════════════════════════════════\n`;
+  return ctx;
+}
+
+function getAllExpectedDocs() {
+  const conf = SESSION_DOCS[session.phase];
+  if (!conf) return [];
+  const all = [...conf.mandatory];
+  if (session.category === 'A+' && conf.catAplusKey) all.splice(1, 0, conf.catAplusKey);
+  conf.optional.forEach(o => { if (!all.find(x => x.key === o.key)) all.push(o); });
+  return all;
+}
+
+function isDocDone(key) {
+  return session.docs.some(d => d.key === key);
+}
+
+function getNextMandatory() {
+  const conf = SESSION_DOCS[session.phase];
+  if (!conf) return null;
+  const mandatory = [...conf.mandatory];
+  if (session.category === 'A+' && conf.catAplusKey) mandatory.splice(1, 0, conf.catAplusKey);
+  return mandatory.find(d => !isDocDone(d.key)) || null;
+}
+
+function prepareNextDoc(config) {
+  pendingDocConfig = config;
+  document.getElementById('docType').value = config.docType;
+  files = [];
+  document.getElementById('fl').innerHTML = '';
+  document.getElementById('fi').value = '';
+  document.getElementById('pasteText').value = '';
+  const hint = document.getElementById('nextDocHint');
+  hint.style.display = 'block';
+  hint.textContent = `↑ A carregar: ${config.label}`;
+  document.querySelector('.sidebar').scrollTo(0, document.querySelector('.sidebar').scrollHeight);
+}
+
+function updateSessionDisplay() {
+  if (!session.docs.length) {
+    document.getElementById('sessPanel').style.display = 'none';
+    return;
+  }
+  document.getElementById('sessPanel').style.display = 'block';
+  const html = session.docs.map(d =>
+    `<div class="sess-doc"><span class="sess-doc-ok">✓</span>${d.label}</div>`
+  ).join('');
+  document.getElementById('sessDocs').innerHTML = html;
+}
+
+function showNextDocPanel() {
+  if (!session.phase || !session.docs.length) return;
+  const conf = SESSION_DOCS[session.phase];
+  if (!conf) return;
+  const allDocs = getAllExpectedDocs();
+  const hasUndone = allDocs.some(d => !isDocDone(d.key));
+
+  let rows = '';
+  allDocs.forEach(doc => {
+    const done = isDocDone(doc.key);
+    const badge = done
+      ? `<span class="ndp-badge ndp-done">✓ Analisado</span>`
+      : `<span class="ndp-badge ndp-obl">Obrigatório</span>`;
+    const btn = done ? '' : `<button class="ndp-btn" onclick='prepareNextDoc(${JSON.stringify(doc)})'>Carregar →</button>`;
+    rows += `<div class="ndp-row">${badge}<span class="ndp-label">${doc.label}</span>${btn}</div>`;
+  });
+  conf.optional.forEach(doc => {
+    if (allDocs.find(d => d.key === doc.key)) return; // already shown (mandatory path)
+    const done = isDocDone(doc.key);
+    const badge = done
+      ? `<span class="ndp-badge ndp-done">✓ Analisado</span>`
+      : `<span class="ndp-badge ndp-opt">Opcional</span>`;
+    const btn = done ? '' : `<button class="ndp-btn" onclick='prepareNextDoc(${JSON.stringify(doc)})'>Carregar →</button>`;
+    rows += `<div class="ndp-row">${badge}<span class="ndp-label">${doc.label}</span>${btn}</div>`;
+  });
+  if (conf.skipLabels && conf.skipLabels.length) {
+    conf.skipLabels.forEach(label => {
+      rows += `<div class="ndp-row"><span class="ndp-badge ndp-skip">Ignorado</span><span class="ndp-label">${label} — não necessário para análise de conformidade</span></div>`;
+    });
+  }
+
+  const hint = hasUndone
+    ? `<div class="ndp-hint">Seleccione o próximo documento a carregar. Clique "Carregar →" para pré-configurar o painel lateral e depois carregue o ficheiro e clique Analisar.</div>`
+    : `<div class="ndp-hint">Todos os documentos esperados foram analisados. Pode ainda adicionar estudos especializados ou clicar "Emitir Parecer Final".</div>`;
+
+  const panel = `<div class="ndp">
+    <div class="ndp-head"><div class="ndp-title">Próximos documentos desta submissão</div></div>
+    <div class="ndp-body">${rows}${hint}</div>
+  </div>`;
+
+  document.getElementById('mc').innerHTML += panel;
+}
+
+async function emitFinalParecer() {
+  if (!session.docs.length) return;
+  document.getElementById('finalBtn').disabled = true;
+  document.getElementById('tabs').style.display = 'none';
+  document.getElementById('mc').innerHTML = `<div class="loading"><div class="spin"></div><div class="load-t">A sintetizar parecer final…</div><div class="load-s">A consolidar ${session.docs.length} análise(s) e a emitir parecer integrado.</div></div>`;
+
+  try {
+    const ctx = buildCrossRefContext();
+    const docList = session.docs.map((d,i) => `${i+1}. ${d.label} (${d.filename})`).join('\n');
+    const userMsg = `Documentos analisados nesta sessão:\n${docList}\n\nContexto do projecto: ${session.proj||'—'} | Fase: ${session.phase} | Categoria: ${session.category||'?'} | Sector: ${session.sector||'?'}\n\nEmitir parecer final consolidado.${ctx}`;
+
+    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'deepseek-chat', max_tokens: 16000, temperature: 0.2,
+        messages: [
+          { role: 'system', content: buildSynthesisSystem() },
+          { role: 'user',   content: userMsg }
+        ]
+      })
+    });
+
+    if (!resp.ok) {
+      const e = await resp.json().catch(()=>({}));
+      throw new Error(e.error?.message || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    const raw = data.choices?.[0]?.message?.content || '';
+    if (!raw) throw new Error('Resposta vazia da API DeepSeek.');
+
+    analysis = { raw, dt: session.phase, cat: session.category, sec: session.sector, proj: session.proj, ts: new Date().toLocaleString('pt-MZ'), filenames: session.docs.map(d=>d.filename), isFinal: true };
+    document.getElementById('tabs').style.display = 'flex';
+    activeTab = 'results';
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===0));
+    renderResults();
+
+  } catch(e) {
+    document.getElementById('mc').innerHTML = `<div class="err"><strong>Erro no parecer final</strong>${e.message}</div>`;
+    document.getElementById('tabs').style.display = 'none';
+  } finally {
+    document.getElementById('finalBtn').disabled = false;
+  }
+}
+
+function buildSynthesisSystem() {
+  return `És um especialista sénior em Avaliação de Impacto Ambiental (AIA) em Moçambique com profundo conhecimento da legislação aplicável: Decreto 54/2015, DM 55/2022 (PGCB), DM 118/2022 (REI), DM 129–130/2006, Lei 5/2017, e diplomas conexos. Conheces as 29 KBAs de Moçambique validadas pelo KBA Global Secretariat (WCS 2021).
+
+MODO: PARECER FINAL CONSOLIDADO
+Tens acesso às análises individuais de todos os documentos da submissão. O teu objectivo é emitir um parecer final integrado que:
+(a) Consolida todas as questões críticas identificadas em cada documento.
+(b) Identifica lacunas transversais — questões que aparecem em múltiplos documentos ou que resultam de inconsistências entre documentos.
+(c) Avalia se as análises cruzadas (Comentários, RI, PGA, Estudos Especializados) revelam questões não resolvidas.
+(d) Emite uma recomendação clara: APROVAÇÃO / APROVAÇÃO CONDICIONADA / DEVOLUÇÃO PARA REVISÃO / RECUSA.
+(e) Redige minuta de comunicação formal final ao proponente.
+
+TOM: Assertivo e jurídico. Citar artigos exactos. Linguagem definitiva. Português pré-1990 (óptimo, acção, facto, directo, objectivo, anónimo).
+
+FORMATO DE SAÍDA — produzir exactamente estes cabeçalhos ##:
+## IDENTIFICAÇÃO DA SUBMISSÃO
+Tabela: Proponente | Fase | Documentos analisados | Categoria | Sector | Data do parecer
+## SEMÁFORO CONSOLIDADO
+Tabela: Dimensão | Estado (🔴🟡🟢⚪) | Fundamento consolidado | Documentos com lacunas
+## QUESTÕES FATAIS NÃO RESOLVIDAS
+Listagem numerada de todas as questões Nível 1 que persistem após análise de todos os documentos. Para cada uma: Questão | Base legal | Documento(s) afectado(s) | Acção obrigatória.
+## LACUNAS TRANSVERSAIS E INCONSISTÊNCIAS ENTRE DOCUMENTOS
+Inconsistências detectadas entre o REIA/EPDA, PGA, PGCB, Estudos Especializados e Parecer RI. Tabela: Inconsistência | Documento A | Documento B | Impacto no licenciamento.
+## AVALIAÇÃO DAS ANÁLISES CRUZADAS
+Resultado das verificações cruzadas: Comentários vs. análise, PGA vs. REIA, Estudos Especializados vs. EIA/PGA, Parecer RI vs. EIA.
+## RECOMENDAÇÃO FINAL
+APROVAÇÃO / APROVAÇÃO CONDICIONADA / DEVOLUÇÃO PARA REVISÃO / RECUSA — com fundamentação jurídica clara e condições se aplicável.
+## MINUTA DE COMUNICAÇÃO FINAL AO PROPONENTE
+Carta formal completa em nome da DINAB/DINAMC/MTA, cobrindo todas as questões não resolvidas e a recomendação final. Ortografia pré-1990.`;
+}
 
 // ── API KEY MODAL ──────────────────────────────────────────────────────────
 function showKeyModal() {
@@ -793,7 +1090,7 @@ function showScannedWarning(fname) {
 }
 
 // ── SYSTEM PROMPT ──────────────────────────────────────────────────────────
-function buildSystem(dt, cat, sec, loc, mode) {
+function buildSystem(dt, cat, sec, loc) {
   const sectExtra = sec.startsWith('Mineiro')
     ? '\n- Decreto 26/2004: programa de encerramento da mina, caução financeira, comité orientador, termo de responsabilização ambiental'
     : sec.startsWith('Petrolífero')
@@ -1020,12 +1317,11 @@ Redigir carta formal completa em nome da DINAB/DINAMC/MTA ao proponente, cobrind
 async function go() {
   if (!apiKey) { showKeyModal(); return; }
 
-  const dt  = document.getElementById('docType').value;
-  const mode = 'standalone';
-  const cat  = document.getElementById('category').value;
-  const sec  = document.getElementById('sector').value;
-  const loc  = document.getElementById('locCtx').value;
-  const proj = document.getElementById('projName').value;
+  const dt    = document.getElementById('docType').value;
+  const cat   = document.getElementById('category').value;
+  const sec   = document.getElementById('sector').value;
+  const loc   = document.getElementById('locCtx').value;
+  const proj  = document.getElementById('projName').value;
   const notes = document.getElementById('notes').value;
   const pasteText = document.getElementById('pasteText').value;
 
@@ -1034,34 +1330,52 @@ async function go() {
     alert('Por favor carregue um documento, cole texto, ou forneça notas.'); return;
   }
 
+  // Initialise session on first doc
+  if (!session.docs.length) {
+    session.phase    = getPhase(dt);
+    session.category = cat;
+    session.sector   = sec;
+    session.loc      = loc;
+    session.proj     = proj;
+  }
+
+  // Determine cross-ref mode and doc label
+  const cfg     = pendingDocConfig;
+  const crossRef = cfg ? cfg.crossRef : null;
+  const docLabel = cfg ? cfg.label : (SESSION_DOCS[getPhase(dt)]?.mandatory[0]?.label || dt);
+  const docKey   = cfg ? cfg.key   : (SESSION_DOCS[getPhase(dt)]?.mandatory[0]?.key   || dt);
+
+  // Build cross-ref system prefix
+  const crossRefPrefix = crossRef && CROSSREF_INSTRUCTIONS[crossRef]
+    ? CROSSREF_INSTRUCTIONS[crossRef] + '\n\n'
+    : '';
+  const crossRefCtx = (session.docs.length && crossRef) ? buildCrossRefContext() : '';
+
   document.getElementById('goBtn').disabled = true;
   document.getElementById('tabs').style.display = 'none';
-  document.getElementById('mc').innerHTML = `<div class="loading"><div class="spin"></div><div class="load-t">A processar…</div><div class="load-s">A extrair texto dos PDFs e a verificar conformidade com a legislação moçambicana de AIA.</div></div>`;
+  const loadLabel = cfg ? `A analisar: ${cfg.label}…` : 'A processar…';
+  document.getElementById('mc').innerHTML = `<div class="loading"><div class="spin"></div><div class="load-t">${loadLabel}</div><div class="load-s">A extrair texto dos PDFs e a verificar conformidade com a legislação moçambicana de AIA.</div></div>`;
 
   try {
-    const instruction = `Tipo: ${dt} | Categoria: ${cat||'?'} | Sector: ${sec||'?'} | Localização: ${loc||'?'}\n${proj?'Projecto: '+proj+'\n':''}${notes?'Notas: '+notes+'\n':''}\nAnalisa o(s) documento(s) abaixo e produz o relatório completo.`;
+    const instruction = `Tipo: ${dt} | Categoria: ${cat||session.category||'?'} | Sector: ${sec||session.sector||'?'} | Localização: ${loc||session.loc||'?'}\n${(proj||session.proj)?'Projecto: '+(proj||session.proj)+'\n':''}${notes?'Notas: '+notes+'\n':''}\nAnalisa o documento abaixo e produz o relatório completo.`;
     let userMsg = instruction;
 
     if (pasteText) userMsg += `\n\n--- TEXTO DO DOCUMENTO (colado pelo analista) ---\n${pasteText.substring(0, 200000)}`;
-
     for (const f of files) {
       const fc = await readFile(f);
       userMsg += `\n\n--- DOCUMENTO: ${fc.name} ---\n${fc.data.substring(0, 200000)}`;
     }
+    if (crossRefCtx) userMsg += crossRefCtx;
 
-    // Call DeepSeek API (OpenAI-compatible format)
+    const systemPrompt = crossRefPrefix + buildSystem(dt, cat||session.category, sec||session.sector, loc||session.loc);
+
     const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'deepseek-chat',
-        max_tokens: 16000,
-        temperature: 0.2,
+        model: 'deepseek-chat', max_tokens: 16000, temperature: 0.2,
         messages: [
-          { role: 'system', content: buildSystem(dt, cat, sec, loc, mode) },
+          { role: 'system', content: systemPrompt },
           { role: 'user',   content: userMsg }
         ]
       })
@@ -1070,7 +1384,6 @@ async function go() {
     if (!resp.ok) {
       const e = await resp.json().catch(() => ({}));
       const msg = e.error?.message || `HTTP ${resp.status}`;
-      // Handle auth error specifically
       if (resp.status === 401 || resp.status === 403) {
         apiKey = null; sessionStorage.removeItem('aia_dskey'); updateKeyStatus();
         throw new Error('Chave API inválida ou expirada. ' + msg);
@@ -1082,11 +1395,24 @@ async function go() {
     const raw = data.choices?.[0]?.message?.content || '';
     if (!raw) throw new Error('Resposta vazia da API DeepSeek.');
 
-    analysis = { raw, dt, cat, sec, proj, ts: new Date().toLocaleString('pt-MZ'), filenames: files.map(f => f.name) };
+    // Store in session
+    const filename = files[0]?.name || (pasteText ? 'texto colado' : 'notas');
+    session.docs.push({ key: docKey, label: docLabel, docType: dt, filename, analysisText: raw });
+    pendingDocConfig = null;
+    document.getElementById('nextDocHint').style.display = 'none';
+    updateSessionDisplay();
+
+    analysis = { raw, dt, cat: cat||session.category, sec: sec||session.sector, proj: proj||session.proj, ts: new Date().toLocaleString('pt-MZ'), filenames: files.map(f => f.name), docLabel };
     document.getElementById('tabs').style.display = 'flex';
     activeTab = 'results';
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===0));
     renderResults();
+    showNextDocPanel();
+
+    // Reset file upload for next doc
+    files = [];
+    document.getElementById('fl').innerHTML = '';
+    document.getElementById('fi').value = '';
 
   } catch(e) {
     document.getElementById('mc').innerHTML = `<div class="err"><strong>Erro na análise</strong>${e.message}</div>`;
@@ -1107,7 +1433,11 @@ function switchTab(tab, el) {
 function renderResults() {
   if (!analysis) return;
   const secs = parse(analysis.raw);
-  let h = `<div class="scope">ⓘ Foco em ambiente e biodiversidade. Reassentamento e saúde ocupacional sinalizados mas não analisados em profundidade.</div>
+  const docNum = session.docs.length;
+  const scopeNote = analysis.isFinal
+    ? `<div class="scope" style="background:var(--green-bg);border-color:#a0d4b0;color:var(--green);">⊞ Parecer Final Consolidado — ${docNum} documento(s) analisado(s) nesta sessão.</div>`
+    : `<div class="scope">ⓘ ${analysis.docLabel ? `A analisar: <strong>${analysis.docLabel}</strong> · Doc. ${docNum} de ${getAllExpectedDocs().length||'?'} esperados. ` : ''}Foco em ambiente e biodiversidade. Reassentamento e saúde ocupacional sinalizados mas não analisados em profundidade.</div>`;
+  let h = `${scopeNote}
     <div class="rh"><div><div class="rp">${analysis.proj||'Projecto'}</div><div class="rs">${analysis.dt} · Cat. ${analysis.cat||'?'} · ${analysis.sec||'—'}</div></div><div class="rt">${analysis.ts}</div></div>
     <button class="copy-btn" onclick="copyAll()">⊞ Copiar texto completo</button>
     <button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar Word</button>`;
