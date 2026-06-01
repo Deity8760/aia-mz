@@ -265,10 +265,15 @@
       <div class="info-head-left">
         <div class="info-mono">AIA·MZ</div>
         <div class="info-title">Sobre esta ferramenta</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:3px;">Última actualização: 30 Mai 2026</div>
       </div>
       <button class="info-close" onclick="hideInfoModal()">×</button>
     </div>
     <div class="info-body">
+
+      <div class="info-sec" style="border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--dim);font-family:var(--mono);">Versão 2025-06-01 · Base de conhecimento: KBAs Moçambique (WCS 2021), Decreto 54/2015, DM 55/2022, DM 118/2022, DM 129–130/2006</div>
+      </div>
 
       <div class="info-sec">
         <div class="info-sec-title">O que é</div>
@@ -359,14 +364,6 @@
         <option value="PGCB_FINAL">PGCB Final</option>
         <option value="PGA">PGA — Plano de Gestão Ambiental</option>
       </select>
-    </div>
-    <div class="sb-sec">
-      <div class="lbl">Modo de Análise</div>
-      <select id="mode">
-        <option value="standalone">Documento isolado — analisar só este documento</option>
-        <option value="submission">Submissão completa — verificar conjunto de documentos</option>
-      </select>
-      <div id="modeHint" style="margin-top:7px;font-size:11px;color:var(--muted);line-height:1.5;"></div>
     </div>
     <div class="sb-sec">
       <div class="lbl">Categoria</div>
@@ -506,21 +503,7 @@ function updateKeyStatus() {
 if (apiKey) updateKeyStatus();
 else showKeyModal();
 
-// ── MODE HINT ──────────────────────────────────────────────────────────────
-const modeHints = {
-  'standalone': 'Analisa apenas o documento carregado. Não flags a ausência de outros documentos do processo.',
-  'submission': 'Verifica o conjunto de documentos submetidos, incluindo consistência entre eles e completude da submissão.'
-};
-document.getElementById('mode').addEventListener('change', function() {
-  document.getElementById('modeHint').textContent = modeHints[this.value] || '';
-});
-document.getElementById('modeHint').textContent = modeHints['standalone'];
-document.getElementById('docType').addEventListener('change', function() {
-  if (['PGA','PGCB_PREL','PGCB_FINAL','EPDA'].includes(this.value)) {
-    document.getElementById('mode').value = 'standalone';
-    document.getElementById('modeHint').textContent = modeHints['standalone'];
-  }
-});
+// Mode is fixed to standalone — multi-doc batch removed pending improvement
 
 // ── FILE HANDLING ──────────────────────────────────────────────────────────
 const SIZE_THRESHOLD = 1.5 * 1024 * 1024; // show extraction indicator ≥ 1.5 MB
@@ -828,9 +811,7 @@ function buildSystem(dt, cat, sec, loc, mode) {
     'REIA': `ÂMBITO DO DOCUMENTO — REIA:\nAvaliar contra Art. 11 do Decreto 54/2015 e DM 129/2006. Aplicar análise completa de todos os módulos.`,
     'EAS': `ÂMBITO DO DOCUMENTO — EAS:\nAvaliar contra Art. 12 do Decreto 54/2015. Categorização B — questões fatais e PGCB são menos prováveis mas verificar. Não aplicar requisitos de Cat. A+/A.`
   };
-  const scopeNote = mode === 'standalone'
-    ? `\nMODO: ANÁLISE DE DOCUMENTO ISOLADO. NÃO flags a ausência de outros documentos do processo — esses podem existir separadamente.\n${docScope[dt] || ''}`
-    : `\nMODO: REVISÃO DE SUBMISSÃO COMPLETA. Verificar consistência entre documentos e completude do conjunto.`;
+  const scopeNote = `\nMODO: ANÁLISE DE DOCUMENTO ISOLADO. NÃO flags a ausência de outros documentos do processo — esses podem existir separadamente.\n${docScope[dt] || ''}`;
   return `És um analista especializado em avaliação de impacto ambiental em Moçambique. A tua função é analisar documentos do processo de AIA e produzir um relatório estruturado de conformidade legal.
 ÂMBITO — Foco PRIMÁRIO: Ambiente e biodiversidade (linha de base, hierarquia de mitigação, contrabalanços, questões fatais, KBAs). Foco SECUNDÁRIO: Conformidade processual e estrutural. FORA DE ÂMBITO: Análise aprofundada de reassentamento e saúde ocupacional — sinalizar apenas.
 ${scopeNote}
@@ -938,6 +919,46 @@ SEC.6 — PGCB/BOMP (10 itens) — avaliar apenas se PGCB submetido ou exigível
 6.9 Período total do contrabalanço e calendário de actividades
 6.10 Orçamento e mecanismos financeiros (orçamento detalhado por actividade para todo o período / mecanismo de financiamento directo ou via Fundo Ambiental / forma de desembolso / garantias financeiras / procedimento de reclamações / conclusões e recomendações para fases seguintes)
 
+## REFERÊNCIA — ÁREAS-CHAVE DE BIODIVERSIDADE (KBAs) EM MOÇAMBIQUE
+Fonte: WCS/Governo de Moçambique/USAID (2021). 29 KBAs validadas pelo KBA Global Secretariat.
+Área total: 139.947 km². 25 terrestres + 4 marinhas.
+
+Quando o EIA menciona localização, distrito ou área de influência, verificar proximidade/sobreposição com as KBAs abaixo. Sobreposição ou adjacência a uma KBA é gatilho Nível 1 nos termos do Decreto 54/2015 (sensitivity criteria). Ausência de análise de KBAs num EIA numa área de influência relevante é lacuna Nível 1.
+
+| # | Nome | Província | Área (km²) | Grupos-gatilho | Critérios KBA | Protecção formal | Ameaças principais |
+|---|---|---|---|---|---|---|---|
+| 1 | Njesi Plateau | Niassa | 1.996 | Aves, Répteis | A1a, A1e, B1 | 21% (Área comunit.) | Caça furtiva, fogos descontrolados |
+| 2 | Reserva Especial do Niassa | Niassa | 42.708 | Mamíferos, Répteis, Peixes de água doce | A1a, A1b, A1c, B1 | 100% (Reserva Esp.) | Agricultura itinerante, mineração aluvial, caça ilegal |
+| 3 | Palma | Cabo Delgado | 4.556 | Plantas, Répteis, Peixes de água doce | A1a, A1b, A1e, B1, B2 | 10% (Game farms) | Megaprojectos, Oil & Gas, conflito armado |
+| 4 | Vamizi (marinha) | Cabo Delgado | 87 | Peixes marinhos | D1b | 100% (Sanctuário comunit.) | Sobrepesca, pesca ilegal, Oil & Gas, alterações climáticas |
+| 5 | Quiterajo | Cabo Delgado | 3.064 | Plantas | A1a, A1b, A1e, B1, B2 | 91% (PN + game farms) | Expansão agrícola, exploração madeireira, conflito armado |
+| 6 | Taratibu | Cabo Delgado | 25 | Anfíbios, Plantas | A1a, A1e, B1 | 100% (Concessão, PN, ZT) | Exploração madeireira, agricultura itinerante, caça |
+| 7 | Eráti | Nampula | 148 | Plantas | A1a, B1 | 0% (sem protecção) | Expansão agrícola |
+| 8 | Reserva Florestal de Matibane | Nampula | 109 | Plantas | A1a, B1 | 100% (Reserva Florestal) | Expansão agrícola, carvão vegetal, exploração madeireira |
+| 9 | Ribáuè-Mphalwe | Nampula | 265 | Plantas, Anfíbios, Répteis | A1a, A1b, A1e, B1, B2 | 100% (Reserva Florestal) | Expansão agrícola, pressão antrópica |
+| 10 | Monte Inago | Nampula | 326 | Répteis, Anfíbios, Insectos | A1a, A1e, B1, B2 | 0% (sem protecção) | Desflorestação, agricultura itinerante, caça |
+| 11 | APAIPS | Nampula | 2.507 | Plantas | A1a, B1 | 100% (Área de Prot. Ambiental) | Expansão agrícola, mineração costeira |
+| 12 | Monte Namuli | Zambézia | 53 | Plantas, Mamíferos, Aves, Anfíbios, Répteis, Insectos | A1a, A1b, A1e, B1, B2 | 0% (sem protecção) | Expansão agrícola (batata), fogos, gado doméstico |
+| 13 | Monte Mabu | Zambézia | 61 | Plantas, Aves, Anfíbios, Répteis, Insectos | A1a, A1b, B1, B2 | 0% (sem protecção) | Fogos descontrolados, caça |
+| 14 | Monte Chiperone | Zambézia | 36 | Répteis, Aves | A1b, B1, B2 | 0% (sem protecção) | Agricultura itinerante, exploração madeireira, caça |
+| 15 | Reserva Florestal de Derre | Zambézia | 3.984 | Peixes de água doce, Plantas | A1b, B1 | 40% (Reserva Florestal) | Expansão agrícola, assentamentos, exploração madeireira ilegal |
+| 16 | Tchuma-Tchato / Lago Cahora Bassa | Tete | 38.175 | Mamíferos, Peixes de água doce | A1a, A1b, A1c, A1d | 100% (CBNRM, PN) | Expansão agrícola, caça furtiva (armadilhas, veneno) |
+| 17 | Serra Choa | Manica | 516 | Aves | A1b | 0% (sem protecção) | Assentamentos humanos, agricultura, pastagem, fogos frequentes |
+| 18 | Machipanda | Manica | 756 | Aves, Mamíferos | A1b | 0% (sem protecção) | Mina de bauxite, expansão agrícola |
+| 19 | Parque Nacional do Chimanimani | Manica | 2.371 | Plantas, Mamíferos, Insectos, Anfíbios, Répteis | A1a, A1b, A1e, B1 | 100% (PN + ZT + RF) | Mineração de ouro, espécies invasoras, fogos |
+| 20 | Complexo Gorongosa-Marromeu | Sofala | 23.088 | Mamíferos, Aves, Répteis, Insectos, Plantas, Peixes de água doce | A1a–A1e, B1 | 100% (PN, RN, RF, concessões) | Caça ilegal, agricultura itinerante, exploração madeireira, prospecção |
+| 21 | Inhassoro-Vilankulos | Inhambane | 5.357 | Plantas | A1a, A1b, B1 | 0% (sem protecção) | Assentamentos, turismo, expansão agrícola |
+| 22 | Grande Bazaruto (marinha/terrestre) | Inhambane | 5.236 | Mamíferos marinhos, Répteis terrestres, Plantas, Aves | A1a–A1d, B1 | 21% (PN, Sanctuário) | Sobrepesca artesanal, agricultura itinerante |
+| 23 | Tofo (marinha) | Inhambane | 342 | Tubarões, Raias | D1b | 0% (sem protecção) | Sobrepesca, pesca ilegal, mineração de areias, turismo sem gestão |
+| 24 | Chongoene | Gaza | 33 | Insectos | A1a, B1 | 0% (sem protecção) | Assentamentos, turismo, agricultura, fogos |
+| 25 | Manhiça-Bilene / Planície do Limpopo | Gaza | 2.070 | Peixes de água doce, Plantas | A1a, A1b, A1e, B1 | 2% (game farms) | Agricultura industrial, carvão vegetal, agricultura itinerante |
+| 26 | Matutuíne | Maputo | 195 | Plantas | A1b, B1 | 0% (sem protecção) | Assentamentos, infra-estruturas |
+| 27 | Reserva Florestal de Licuáti | Maputo | 141 | Plantas | A1a, A1b, B1 | 100% (Reserva Florestal) | Carvão vegetal, expansão agrícola |
+| 28 | Reserva Especial de Maputo | Maputo | 1.040 | Peixes de água doce, Insectos, Plantas | A1a, A1b, B1 | 100% (Reserva Esp., Área Prot. Amb.) | Desflorestação, extracção de plantas medicinais |
+| 29 | Reserva Marinha Parcial de Ponta do Ouro | Maputo | 698 | Peixes marinhos, Mamíferos marinhos | A1b, A1c, D1b | 100% (Reserva Marinha Parcial, Área Prot. Amb.) | Sobrepesca, pesca ilegal, turismo descontrolado |
+
+REGRA DE APLICAÇÃO: Se o EIA descreve uma localização em qualquer distrito das províncias acima, verificar se existe KBA no mesmo distrito ou adjacente. Se sim, avaliar: (a) o EIA identifica a KBA? (b) avalia impactos sobre as espécies-gatilho? (c) propõe medidas específicas? A ausência de qualquer destes três elementos é lacuna Nível 1 ou Nível 2 conforme a magnitude do projecto.
+
 TOM E ESTILO: Tom assertivo e jurídico. Não usar linguagem de hedging ("pode ser que", "poderá", "é possível que"). Usar linguagem definitiva: "é juridicamente insustentável", "viola o Art. X", "está ausente", "é inadmissível". Citar artigos e diplomas exactos. Ser específico: nomear espécies, diplomas, datas, áreas protegidas identificadas no documento. Não repetir observações entre secções.
 OBRIGATÓRIO: Preencher TODAS as secções com conteúdo real e substancial extraído do documento analisado. Nunca gerar um cabeçalho ## sem conteúdo imediatamente a seguir. Se uma secção não tem elementos relevantes, explicar brevemente porquê.
 PARTICIPAÇÃO PÚBLICA: APENAS avaliar se o documento de PP (relatório de consulta pública) foi explicitamente submetido para análise. Caso não tenha sido submetido, marcar ⚪ na linha de PP do SEMÁFORO com fundamento "Não avaliado — relatório de PP não incluído na submissão. Carregar o relatório de PP para análise específica." Não inferir conformidade com PP com base apenas no EPDA.
@@ -1000,7 +1021,7 @@ async function go() {
   if (!apiKey) { showKeyModal(); return; }
 
   const dt  = document.getElementById('docType').value;
-  const mode = document.getElementById('mode').value;
+  const mode = 'standalone';
   const cat  = document.getElementById('category').value;
   const sec  = document.getElementById('sector').value;
   const loc  = document.getElementById('locCtx').value;
