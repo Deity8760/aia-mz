@@ -1440,7 +1440,7 @@ function renderResults() {
   let h = `${scopeNote}
     <div class="rh"><div><div class="rp">${analysis.proj||'Projecto'}</div><div class="rs">${analysis.dt} · Cat. ${analysis.cat||'?'} · ${analysis.sec||'—'}</div></div><div class="rt">${analysis.ts}</div></div>
     <button class="copy-btn" onclick="copyAll()">⊞ Copiar texto completo</button>
-    <button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar .docx</button>`;
+    <button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar Word</button>`;
   if (!secs.length) {
     h += `<div class="sb">${fmt(analysis.raw)}</div>`;
   } else {
@@ -1457,7 +1457,7 @@ function tog(i) {
 }
 function renderRaw() {
   if (!analysis) return;
-  document.getElementById('mc').innerHTML = `<button class="copy-btn" onclick="copyAll()">⊞ Copiar texto</button><button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar .docx</button><div class="raw">${esc(analysis.raw)}</div>`;
+  document.getElementById('mc').innerHTML = `<button class="copy-btn" onclick="copyAll()">⊞ Copiar texto</button><button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar Word</button><div class="raw">${esc(analysis.raw)}</div>`;
 }
 function parse(txt) {
   const r=[]; let cur=null;
@@ -1564,11 +1564,11 @@ function exportWord(){
   }
   const body=toWordHtml(analysis.raw);
   const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>@page{margin:2.5cm}body{font-family:Arial,sans-serif;font-size:11pt;line-height:1.6;color:#1a1714}h1{font-size:16pt;color:#5a3e1b}h2{font-size:14pt;color:#5a3e1b;margin-top:16pt}h3{font-size:12pt;color:#8a6030;margin-top:10pt}.meta{font-size:9pt;color:#888;margin-bottom:16pt}hr{border:none;border-top:2pt solid #5a3e1b;margin:12pt 0}</style></head><body><h1>Relatório de Análise de Conformidade AIA</h1><p class="meta">${esc(meta)}</p><hr><p style="font-family:Arial;font-size:11pt;margin:4pt 0">${body}</p></body></html>`;
-  const blob=new Blob(['﻿',html],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  const blob=new Blob(['﻿',html],{type:'application/msword'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   const base=(analysis.filenames&&analysis.filenames.length>0?analysis.filenames[0].replace(/\.[^.]+$/,''):(analysis.proj||'Projecto'));
-  a.href=url; a.download=(base+'_analise_'+new Date().toISOString().slice(0,10)+'.docx').replace(/[^a-zA-Z0-9_\-\.]/g,'_');
+  a.href=url; a.download=(base+'_analise_'+new Date().toISOString().slice(0,10)+'.doc').replace(/[^a-zA-Z0-9_\-\.]/g,'_');
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
