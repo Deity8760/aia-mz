@@ -1440,7 +1440,7 @@ function renderResults() {
   let h = `${scopeNote}
     <div class="rh"><div><div class="rp">${analysis.proj||'Projecto'}</div><div class="rs">${analysis.dt} · Cat. ${analysis.cat||'?'} · ${analysis.sec||'—'}</div></div><div class="rt">${analysis.ts}</div></div>
     <button class="copy-btn" onclick="copyAll()">⊞ Copiar texto completo</button>
-    <button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar Word</button>`;
+    <button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar .docx</button>`;
   if (!secs.length) {
     h += `<div class="sb">${fmt(analysis.raw)}</div>`;
   } else {
@@ -1457,7 +1457,7 @@ function tog(i) {
 }
 function renderRaw() {
   if (!analysis) return;
-  document.getElementById('mc').innerHTML = `<button class="copy-btn" onclick="copyAll()">⊞ Copiar texto</button><button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar Word</button><div class="raw">${esc(analysis.raw)}</div>`;
+  document.getElementById('mc').innerHTML = `<button class="copy-btn" onclick="copyAll()">⊞ Copiar texto</button><button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar .docx</button><div class="raw">${esc(analysis.raw)}</div>`;
 }
 function parse(txt) {
   const r=[]; let cur=null;
@@ -1524,39 +1524,51 @@ function exportWord(){
   if(!analysis) return;
   const meta=`${analysis.dt} | Categoria ${analysis.cat||'?'} | ${analysis.sec||'—'} | ${analysis.ts}`;
   function toWordHtml(txt){
-    let h=txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    h=h.replace(/((?:^\|.+\|$\n?)+)/gm,tableBlock=>{
-      const rows=tableBlock.trim().split('\n');
-      let html='<table style="border-collapse:collapse;width:100%;margin:8pt 0;font-size:10pt;font-family:Arial">';
-      let isHeader=true;
-      for(const row of rows){
-        if(/^[\s|:\-]+$/.test(row.replace(/[^|:\-\s]/g,''))){isHeader=false;continue;}
-        const cells=row.split('|').slice(1,-1);
-        const tag=isHeader?'th':'td';
-        const bg=isHeader?'background:#5a3e1b;color:#fff':'';
-        html+='<tr>'+cells.map(c=>`<${tag} style="border:1px solid #d4cfc4;padding:4pt 6pt;${bg}">${c.trim()}</${tag}>`).join('')+'</tr>';
-        if(isHeader)isHeader=false;
+    // Normalise line endings first — \r breaks table row detection
+    let h = txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    h = h.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // Convert markdown tables line-by-line (same approach as fmt())
+    const P = 'style="font-family:Arial;font-size:11pt;margin:4pt 0"';
+    const isSep = ln => { const c=ln.split('|').slice(1,-1); return c.length>0 && c.every(x=>/^\s*:?-+:?\s*$/.test(x)); };
+    const lines = h.split('\n'); const out = []; let inT=false, hDone=false;
+    for(const ln of lines){
+      if(/^\|.+\|$/.test(ln)){
+        if(!inT){ out.push('<table style="border-collapse:collapse;width:100%;margin:8pt 0;font-size:10pt;font-family:Arial">'); inT=true; hDone=false; }
+        if(!hDone && isSep(ln)){ hDone=true; continue; }
+        if(hDone && isSep(ln)){ continue; }
+        const tag=hDone?'td':'th';
+        const bg=!hDone?'background:#5a3e1b;color:#fff;':'';
+        const cells=ln.split('|').slice(1,-1).map(c=>`<${tag} style="border:1px solid #d4cfc4;padding:4pt 6pt;${bg}">${c.trim()}</${tag}>`).join('');
+        out.push(`<tr>${cells}</tr>`);
+      } else {
+        if(inT){ out.push('</table>'); inT=false; hDone=false; }
+        out.push(ln);
       }
-      return html+'</table>';
-    });
-    h=h.replace(/^## (.+)$/gm,'</p><h2 style="color:#5a3e1b;font-family:Arial;font-size:14pt;margin-top:16pt">$1</h2><p style="font-family:Arial;font-size:11pt;margin:4pt 0">')
-       .replace(/^### (.+)$/gm,'</p><h3 style="color:#8a6030;font-family:Arial;font-size:12pt;margin-top:10pt">$1</h3><p style="font-family:Arial;font-size:11pt;margin:4pt 0">')
-       .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-       .replace(/^[-•]\s+(.+)$/gm,'</p><p style="font-family:Arial;font-size:11pt;margin:2pt 0 2pt 20pt">&#x2022;&nbsp;$1</p><p style="font-family:Arial;font-size:11pt;margin:4pt 0">')
-       .replace(/🔴[^<]*/g,'<span style="color:#8a2a1e;font-weight:bold">🔴 NÃO CONFORME</span> ')
-       .replace(/🟡[^<]*/g,'<span style="color:#7a5c00;font-weight:bold">🟡 LACUNAS</span> ')
-       .replace(/🟢[^<]*/g,'<span style="color:#1e5c30;font-weight:bold">🟢 CONFORME</span> ')
-       .replace(/⚪[^<]*/g,'<span style="color:#9a9490">⚪ N/A</span> ')
-       .replace(/\n/g,'<br>');
+    }
+    if(inT) out.push('</table>');
+    h = out.join('\n');
+    // Section headings — emit as block elements, not wrapped in <p>
+    h = h.replace(/^## (.+)$/gm,`</p><h2 style="color:#5a3e1b;font-family:Arial;font-size:14pt;margin-top:16pt;margin-bottom:4pt">$1</h2><p ${P}>`)
+         .replace(/^### (.+)$/gm,`</p><h3 style="color:#8a6030;font-family:Arial;font-size:12pt;margin-top:10pt;margin-bottom:2pt">$1</h3><p ${P}>`)
+         .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+         .replace(/^[-•]\s+(.+)$/gm,`</p><p style="font-family:Arial;font-size:11pt;margin:2pt 0 2pt 20pt">&#x2022;&nbsp;$1</p><p ${P}>`)
+         .replace(/🔴[^<\n]*/g,'<span style="color:#8a2a1e;font-weight:bold">🔴 NÃO CONFORME</span> ')
+         .replace(/🟡[^<\n]*/g,'<span style="color:#7a5c00;font-weight:bold">🟡 LACUNAS</span> ')
+         .replace(/🟢[^<\n]*/g,'<span style="color:#1e5c30;font-weight:bold">🟢 CONFORME</span> ')
+         .replace(/⚪[^<\n]*/g,'<span style="color:#9a9490">⚪ N/A</span> ');
+    // Critical fix: <p> must never wrap block elements — Word drops them silently
+    h = h.replace(/(<p[^>]*>)\s*(<(?:table|h[1-6]|ul|ol))/g,'$2');
+    h = h.replace(/(<\/(?:table|h[1-6]|ul|ol)>)\s*(<\/p>)/g,'$1');
+    h = h.replace(/\n/g,'<br>');
     return h;
   }
   const body=toWordHtml(analysis.raw);
   const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>@page{margin:2.5cm}body{font-family:Arial,sans-serif;font-size:11pt;line-height:1.6;color:#1a1714}h1{font-size:16pt;color:#5a3e1b}h2{font-size:14pt;color:#5a3e1b;margin-top:16pt}h3{font-size:12pt;color:#8a6030;margin-top:10pt}.meta{font-size:9pt;color:#888;margin-bottom:16pt}hr{border:none;border-top:2pt solid #5a3e1b;margin:12pt 0}</style></head><body><h1>Relatório de Análise de Conformidade AIA</h1><p class="meta">${esc(meta)}</p><hr><p style="font-family:Arial;font-size:11pt;margin:4pt 0">${body}</p></body></html>`;
-  const blob=new Blob(['﻿',html],{type:'application/msword'});
+  const blob=new Blob(['﻿',html],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   const base=(analysis.filenames&&analysis.filenames.length>0?analysis.filenames[0].replace(/\.[^.]+$/,''):(analysis.proj||'Projecto'));
-  a.href=url; a.download=(base+'_analise_'+new Date().toISOString().slice(0,10)+'.doc').replace(/[^a-zA-Z0-9_\-\.]/g,'_');
+  a.href=url; a.download=(base+'_analise_'+new Date().toISOString().slice(0,10)+'.docx').replace(/[^a-zA-Z0-9_\-\.]/g,'_');
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
