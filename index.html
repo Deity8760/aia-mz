@@ -470,6 +470,7 @@
     <div class="tabs" id="tabs" style="display:none;">
       <div class="tab active" onclick="switchTab('results',this)">Resultados</div>
       <div class="tab" onclick="switchTab('raw',this)">Texto Completo</div>
+      <div class="tab" id="histTab" style="display:none;" onclick="switchTab('history',this)">Análises Anteriores</div>
     </div>
     <div class="content" id="mc">
       <div class="welcome">
@@ -626,13 +627,16 @@ function prepareNextDoc(config) {
   pendingDocConfig = config;
   document.getElementById('docType').value = config.docType;
   files = [];
-  document.getElementById('fl').innerHTML = '';
   document.getElementById('fi').value = '';
   document.getElementById('pasteText').value = '';
   const hint = document.getElementById('nextDocHint');
   hint.style.display = 'block';
   hint.textContent = `↑ A carregar: ${config.label}`;
-  document.querySelector('.sidebar').scrollTo(0, document.querySelector('.sidebar').scrollHeight);
+  updateUploadZone();
+  // Update dropzone text to reflect expected doc
+  document.querySelector('.dz-txt').innerHTML = `<strong>Clique ou arraste</strong><br><span style="color:var(--accent);">${config.label}</span>`;
+  const sb = document.querySelector('.sidebar');
+  sb.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function updateSessionDisplay() {
@@ -822,7 +826,14 @@ function removeFile(n) {
   if (!files.length) { const w = document.getElementById('scannedWarn'); if (w) w.remove(); }
 }
 function renderFiles() {
-  const fl = document.getElementById('fl'); fl.innerHTML = '';
+  const fl = document.getElementById('fl');
+  // Start with archived session docs
+  const archived = session.docs.map(d =>
+    `<div class="fi"><span class="sess-doc-ok" style="font-size:13px;">✓</span><span class="fn" title="${d.filename}">${d.filename}</span><span class="fsz" style="color:var(--green);font-size:9px;">analisado</span></div>`
+  ).join('');
+  fl.innerHTML = archived;
+  // Reset dropzone text once a file is chosen
+  if (files.length) document.querySelector('.dz-txt').innerHTML = `<strong>Clique ou arraste</strong><br>PDF, TXT`;
   files.forEach(f => {
     const sz = f.size < 1048576 ? Math.round(f.size/1024)+'kb' : (f.size/1048576).toFixed(1)+'mb';
     const isLarge = f.name.toLowerCase().endsWith('.pdf') && f.size > SIZE_THRESHOLD;
@@ -1127,7 +1138,7 @@ TRÊS NÍVEIS:
 - NÍVEL 2 — FUNDAMENTADO: Adequação e consistência interna. Usar: "a adequação é questionável".
 - NÍVEL 3 — INDICATIVO: Qualidade técnica. Usar: "requer atenção", "não há evidência de".
 REGRA ABSOLUTA NÍVEL 1: Identificar e reportar TODAS as questões Nível 1 sem excepção e sem limite de número. Suprimir questões Nível 1 por razões de síntese ou concisão é inadmissível — cada questão Nível 1 omitida é um erro técnico com consequências no licenciamento.
-CATEGORIZAÇÃO A+: A categorização é uma decisão da entidade licenciadora (DINAMC/MAAP), não do proponente. Quando os critérios do Anexo I do Decreto 54/2015 apontam para A+, formular como nota interna ao técnico revisor: "Os factores [X, Y, Z] identificados no documento levantam a questão de enquadramento A+. Recomenda-se que a entidade licenciadora verifique e fundamente a categorização atribuída face ao Anexo I antes de emitir o TdR." NÃO incluir a questão de reclassificação na MINUTA DE COMUNICAÇÃO AO PROPONENTE — a carta ao proponente só deve referir a categorização se a entidade licenciadora já tiver tomado a decisão formal de reclassificar. A questão de A+ pertence às QUESTÕES CRÍTICAS (para uso interno do técnico) e não à MINUTA.
+CATEGORIZAÇÃO A+: A categorização é uma decisão da entidade licenciadora (DINAMC/MAAP), não do proponente. Quando os critérios do Anexo I do Decreto 54/2015 apontam para A+, formular como nota interna ao técnico revisor: "Os factores [X, Y, Z] identificados no documento levantam a questão de enquadramento A+. Recomenda-se que a entidade licenciadora verifique e fundamente a categorização atribuída face ao Anexo I antes de emitir o TdR." NÃO incluir a questão de reclassificação na comunicação ao proponente — essa comunicação só é emitida no Parecer Final e só deve referir a categorização se a entidade licenciadora já tiver tomado a decisão formal de reclassificar. A questão de A+ pertence às QUESTÕES CRÍTICAS (para uso interno do técnico).
 QUESTÕES FATAIS (Anexo V Decreto 54/2015) — verificar se o documento demonstra explicitamente ausência de impactos em:
 1. Áreas de protecção total ou zonas de protecção total de áreas de conservação
 2. Habitats com ≥10% pop. global/nacional de espécies CR ou EN
@@ -1309,8 +1320,7 @@ Produzir tabela de pontuação por secção (marcar ⚪ N/A para secções não 
 De seguida, listar os itens críticos ausentes ou insuficientes por secção (indicar número do item e descrição específica do que está ausente ou insuficiente no documento analisado — não repetir observações já incluídas nas QUESTÕES CRÍTICAS).
 ## LACUNAS E OBSERVAÇÕES — NÍVEL 2 E 3
 ## SINALIZAÇÕES — OUTROS DOMÍNIOS
-## MINUTA DE COMUNICAÇÃO AO PROPONENTE
-Redigir carta formal completa em nome da DINAB/DINAMC/MTA ao proponente, cobrindo todas as questões críticas e lacunas principais. Ortografia pré-1990 (óptimo, acção, facto, directo, objectivo). Português de Moçambique.`;
+NÃO incluir minuta de comunicação nesta análise. A minuta será gerada apenas no Parecer Final consolidado, após análise de todos os documentos da submissão.`;
 }
 
 // ── MAIN ANALYSIS ──────────────────────────────────────────────────────────
@@ -1404,15 +1414,17 @@ async function go() {
 
     analysis = { raw, dt, cat: cat||session.category, sec: sec||session.sector, proj: proj||session.proj, ts: new Date().toLocaleString('pt-MZ'), filenames: files.map(f => f.name), docLabel };
     document.getElementById('tabs').style.display = 'flex';
+    // Show history tab if >1 doc in session
+    document.getElementById('histTab').style.display = session.docs.length > 1 ? '' : 'none';
     activeTab = 'results';
     document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===0));
     renderResults();
     showNextDocPanel();
 
-    // Reset file upload for next doc
+    // Reset file upload for next doc — show archived docs above dropzone
     files = [];
-    document.getElementById('fl').innerHTML = '';
     document.getElementById('fi').value = '';
+    updateUploadZone();
 
   } catch(e) {
     document.getElementById('mc').innerHTML = `<div class="err"><strong>Erro na análise</strong>${e.message}</div>`;
@@ -1428,7 +1440,44 @@ function switchTab(tab, el) {
   activeTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  tab === 'results' ? renderResults() : renderRaw();
+  if (tab === 'results') renderResults();
+  else if (tab === 'history') renderHistory();
+  else renderRaw();
+}
+
+function renderHistory() {
+  if (!session.docs.length) return;
+  // Show all but the last (which is the current result)
+  const prev = session.docs.slice(0, -1);
+  if (!prev.length) { document.getElementById('mc').innerHTML = '<div class="scope">Sem análises anteriores nesta sessão.</div>'; return; }
+  let h = '';
+  prev.forEach((d, i) => {
+    const secs = parse(d.analysisText);
+    h += `<div style="margin-bottom:24px;"><div class="rh"><div><div class="rp">${d.label}</div><div class="rs">${d.filename}</div></div></div>`;
+    if (!secs.length) {
+      h += `<div class="sb">${fmt(d.analysisText)}</div>`;
+    } else {
+      secs.forEach((s, si) => {
+        const id = `h${i}_${si}`;
+        h += `<div class="asec"><div class="ah" onclick="tog('${id}')"><span class="snum">${String(si+1).padStart(2,'0')}</span><span class="stitle">${s.t}</span><span class="stog" id="t${id}">▼</span></div><div class="sb collapsed" id="b${id}">${fmt(s.c)}</div></div>`;
+      });
+    }
+    h += '</div>';
+  });
+  document.getElementById('mc').innerHTML = h;
+}
+
+function updateUploadZone() {
+  const fl = document.getElementById('fl');
+  // Show previously analysed docs as archived entries
+  const archived = session.docs.map(d =>
+    `<div class="fi"><span class="sess-doc-ok" style="font-size:13px;">✓</span><span class="fn">${d.label}</span><span class="fsz" style="color:var(--dim);">${d.filename}</span></div>`
+  ).join('');
+  // Show pending doc hint as a + entry if applicable
+  const hint = pendingDocConfig
+    ? `<div class="fi" style="border-color:var(--mid);background:var(--soft);"><span style="color:var(--mid);font-size:14px;font-weight:bold;">+</span><span class="fn" style="color:var(--accent);">${pendingDocConfig.label}</span><span class="fsz" style="color:var(--mid);">arraste ou clique acima</span></div>`
+    : '';
+  fl.innerHTML = archived + hint;
 }
 function renderResults() {
   if (!analysis) return;
