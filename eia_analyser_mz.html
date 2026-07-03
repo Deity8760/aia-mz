@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AIA·MZ — Analisador de EIA</title>
+<script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;1,8..60,300&display=swap');
 
@@ -592,7 +593,7 @@ function renderResults() {
     <div class="rh"><div><div class="rp">${analysis.proj||'Projecto'}</div><div class="rs">${analysis.dt} · Cat. ${analysis.cat||'?'} · ${analysis.sec||'—'}</div></div><div class="rt">${analysis.ts}</div></div>
     <div class="action-bar">
       <button class="copy-btn"  onclick="copyAll()">⊞ Copiar texto completo</button>
-      <button class="save-btn"  onclick="saveReport()">⬇ Guardar relatório (.txt)</button>
+      <button class="save-btn"  onclick="saveReport()">⬇ Guardar relatório (.docx)</button>
       <button class="email-btn" onclick="emailReport()">✉ Enviar por email</button>
     </div>`;
   if (!secs.length) {
@@ -683,15 +684,49 @@ async function copyAll() {
   } catch(e){}
 }
 
-function saveReport() {
+async function saveReport() {
   if (!analysis) return;
-  const header = `RELATÓRIO AIA·MZ\nGerado em: ${analysis.ts}\nDocumento: ${analysis.dt} | Categoria: ${analysis.cat||'?'} | Sector: ${analysis.sec||'?'}\n${'─'.repeat(60)}\n\n`;
-  const blob = new Blob([header + analysis.raw], { type: 'text/plain;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `AIA_MZ_${(analysis.proj||analysis.dt).replace(/[^a-zA-Z0-9]/g,'_')}_${new Date().toISOString().slice(0,10)}.txt`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  try {
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = docx;
+    const secs = parse(analysis.raw);
+    const children = [
+      new Paragraph({ text: 'Relatório de Conformidade AIA·MZ', heading: HeadingLevel.HEADING_1 }),
+      new Paragraph({ children: [new TextRun({ text: `Gerado em: ${analysis.ts}`, italics: true, size: 20 })] }),
+      new Paragraph({ children: [new TextRun({ text: `Documento: ${analysis.dt}  |  Categoria: ${analysis.cat||'?'}  |  Sector: ${analysis.sec||'?'}`, size: 20 })] }),
+      new Paragraph({ text: '' }),
+    ];
+    for (const sec of secs) {
+      children.push(new Paragraph({ text: sec.t, heading: HeadingLevel.HEADING_2 }));
+      for (const line of sec.c.split('\n')) {
+        const t = line.trim();
+        if (!t) { children.push(new Paragraph({ text: '' })); continue; }
+        // Table rows — strip markdown pipes and render as plain text
+        if (t.startsWith('|')) {
+          const cells = t.split('|').slice(1,-1).map(c=>c.trim()).filter(c=>c&&!/^[-:]+$/.test(c));
+          if (cells.length) children.push(new Paragraph({ text: cells.join('  |  '), style: 'tablerow' }));
+        } else {
+          children.push(new Paragraph({ text: t.replace(/\*\*/g,'').replace(/\*/g,'').replace(/^[-•]\s+/,'• ') }));
+        }
+      }
+      children.push(new Paragraph({ text: '' }));
+    }
+    const doc = new Document({ sections: [{ children }] });
+    const blob = await Packer.toBlob(doc);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `AIA_MZ_${(analysis.proj||analysis.dt).replace(/[^a-zA-Z0-9]/g,'_')}_${new Date().toISOString().slice(0,10)}.docx`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch(e) {
+    console.error('docx error', e);
+    // Fallback to txt if docx library not loaded
+    const blob = new Blob([analysis.raw], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `AIA_MZ_${(analysis.proj||analysis.dt).replace(/[^a-zA-Z0-9]/g,'_')}_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 }
 
 function emailReport() {
