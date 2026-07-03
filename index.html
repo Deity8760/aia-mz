@@ -443,6 +443,12 @@
       <div class="lbl">Nome do Projecto (opcional)</div>
       <input type="text" id="projName" placeholder="Ex: Projecto Mineiro de Moatize" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--serif);font-size:13px;outline:none;border-radius:var(--r);">
     </div>
+    <div class="sb-sec" style="background:var(--green-bg);border-bottom-color:#c8ddd0;">
+      <div class="lbl" style="color:var(--green);">Identificação (opcional)</div>
+      <div style="font-size:11px;color:var(--green);margin-bottom:8px;line-height:1.5;opacity:0.85;">Para rastrear o uso e receber o relatório por email.</div>
+      <input type="text" id="userName" placeholder="Nome do analista" style="width:100%;background:var(--bg);border:1px solid #c8ddd0;color:var(--text);padding:7px 10px;font-family:var(--serif);font-size:13px;outline:none;border-radius:var(--r);margin-bottom:6px;">
+      <input type="email" id="userEmail" placeholder="Email institucional" style="width:100%;background:var(--bg);border:1px solid #c8ddd0;color:var(--text);padding:7px 10px;font-family:var(--serif);font-size:13px;outline:none;border-radius:var(--r);">
+    </div>
     <div class="sb-sec">
       <div class="lbl">Carregar PDF(s)</div>
       <div class="dz" id="dz">
@@ -508,6 +514,25 @@
 // ── STATE ──────────────────────────────────────────────────────────────────
 let files = [], analysis = null, activeTab = 'results';
 let apiKey = sessionStorage.getItem('aia_dskey') || 'sk-56463591d26c4dd7a96a5c71697fec19';
+
+// ── SUPABASE LOGGING ────────────────────────────────────────────────────────
+const SUPA_URL = 'https://kikticuxnmrmzdezwsvm.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtpa3RpY3V4bm1ybXpkZXp3c3ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MzczMzAsImV4cCI6MjA5MjIxMzMzMH0.DaK4qKlQYUHM3YdiQAruN92R_iE4Q8yjacepETDaouM';
+async function logUsage(dt, cat, sec, filename) {
+  try {
+    let ip = null;
+    try { const r = await fetch('https://api.ipify.org?format=json'); ip = (await r.json()).ip; } catch(e) {}
+    await fetch(`${SUPA_URL}/rest/v1/aia_usage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        user_name:  (document.getElementById('userName')?.value || '').trim() || null,
+        user_email: (document.getElementById('userEmail')?.value || '').trim() || null,
+        ip_address: ip, doc_type: dt, category: cat, sector: sec, filename
+      })
+    });
+  } catch(e) { console.warn('Supabase log:', e); }
+}
 
 // ── SESSION ────────────────────────────────────────────────────────────────
 let session = { phase: null, category: null, sector: null, loc: null, proj: null, docs: [] };
@@ -1421,6 +1446,7 @@ async function go() {
     updateSessionDisplay();
 
     analysis = { raw, dt, cat: cat||session.category, sec: sec||session.sector, proj: proj||session.proj, ts: new Date().toLocaleString('pt-MZ'), filenames: files.map(f => f.name), docLabel };
+    logUsage(dt, cat||session.category, sec||session.sector, files.map(f=>f.name).join(', ') || (pasteText ? 'texto colado' : 'notas'));
     document.getElementById('tabs').style.display = 'flex';
     // Show history tab if >1 doc in session
     document.getElementById('histTab').style.display = session.docs.length > 1 ? '' : 'none';
@@ -1497,7 +1523,8 @@ function renderResults() {
   let h = `${scopeNote}
     <div class="rh"><div><div class="rp">${analysis.proj||'Projecto'}</div><div class="rs">${analysis.dt} · Cat. ${analysis.cat||'?'} · ${analysis.sec||'—'}</div></div><div class="rt">${analysis.ts}</div></div>
     <button class="copy-btn" onclick="copyAll()">⊞ Copiar texto completo</button>
-    <button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar Word</button>`;
+    <button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar Word</button>
+    <button class="copy-btn" onclick="emailReport()" style="margin-left:6px;">✉ Enviar por email</button>`;
   if (!secs.length) {
     h += `<div class="sb">${fmt(analysis.raw)}</div>`;
   } else {
@@ -1628,6 +1655,23 @@ function exportWord(){
   a.href=url; a.download=(base+'_analise_'+new Date().toISOString().slice(0,10)+'.doc').replace(/[^a-zA-Z0-9_\-\.]/g,'_');
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+
+// ── EMAIL REPORT ───────────────────────────────────────────────────────────
+function emailReport() {
+  if (!analysis) return;
+  const email = (document.getElementById('userEmail')?.value || '').trim();
+  if (!email) {
+    alert('Por favor insira o seu email no campo "Identificação" no painel lateral antes de enviar.');
+    return;
+  }
+  const proj = analysis.proj || analysis.dt;
+  const subject = `AIA·MZ — ${proj} — Relatório de Conformidade`;
+  const secs = parse(analysis.raw);
+  const compact = secs.slice(0, 3).map(s => `## ${s.t}\n${s.c}`).join('\n');
+  const note = '\n\n─────────────────────────────────────────\nNota: este email contém as primeiras secções do relatório.\nPara o relatório completo, use "⬇ Exportar Word" ou "⊞ Copiar texto completo" na aplicação AIA·MZ.\n─────────────────────────────────────────';
+  const body = `Relatório de Conformidade AIA·MZ\nGerado em: ${analysis.ts}\nDocumento: ${analysis.dt} | Categoria: ${analysis.cat||'?'} | Sector: ${analysis.sec||'?'}\n\n${compact}${note}`;
+  window.location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 // ── INFO MODAL ─────────────────────────────────────────────────────────────
