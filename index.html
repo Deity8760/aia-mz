@@ -298,7 +298,7 @@
     <div class="info-body">
 
       <div class="info-sec" style="border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;">
-        <div id="verStamp" style="font-size:11px;color:var(--dim);font-family:var(--mono);">Base de conhecimento: KBAs Moçambique (WCS 2021), Decreto 54/2015, DM 55/2022, DM 118/2022, DM 129–130/2006</div>
+        <div id="verStamp" style="font-size:11px;color:var(--dim);font-family:var(--mono);">Base de conhecimento: KBAs Moçambique (WCS 2021), Decreto 54/2015, DM 55/2022, DM 118/2022, DM 129–130/2006, Decreto 31/2012</div>
         <script>
           (function(){
             var d=new Date(document.lastModified);
@@ -324,7 +324,7 @@
 
       <div class="info-sec">
         <div class="info-sec-title">De onde vem a análise</div>
-        <p>A análise é gerada por um modelo de linguagem (DeepSeek) instruído com a legislação moçambicana de AIA: Decreto 54/2015, DM 55/2022 (PGCB), DM 118/2022 (REI), DM 129–130/2006, Decreto 56/2010, Lei 5/2017 e diplomas conexos.</p>
+        <p>A análise é gerada por um modelo de linguagem (DeepSeek) instruído com a legislação moçambicana de AIA: Decreto 54/2015, DM 55/2022 (PGCB), DM 118/2022 (REI), DM 129–130/2006, Decreto 56/2010, Decreto 31/2012 (Reassentamento), Lei 5/2017 e diplomas conexos.</p>
         <p>O modelo é orientado para citar artigos e diplomas exactos, identificar questões fatais (Anexo V do Decreto 54/2015), distinguir NPL de GL para KBAs, e redigir comunicações formais em português de Moçambique.</p>
       </div>
 
@@ -397,6 +397,7 @@
         <option value="PGCB_PREL">PGCB Preliminar</option>
         <option value="PGCB_FINAL">PGCB Final</option>
         <option value="PGA">PGA — Plano de Gestão Ambiental</option>
+        <option value="PAR">PAR — Plano de Acção de Reassentamento</option>
       </select>
     </div>
     <div class="sb-sec">
@@ -503,6 +504,7 @@
             <li>DM 118/2022 — REI (Cat. A+)</li><li>Decreto 26/2004 — Mineiro</li>
             <li>Decreto 56/2010 — Petrolífero</li><li>Decreto 18/2004 — Qualidade</li>
             <li>Lei 5/2017 — Biodiversidade</li><li>Decreto 25/2008 — Esp. Invasoras</li>
+            <li>Decreto 31/2012 — Reassentamento</li>
           </ul>
         </div>
       </div>
@@ -567,7 +569,7 @@ const SESSION_DOCS = {
     optional: [
       { key: 'specialist',   label: 'Estudos Especializados',                                         docType: 'REIA', crossRef: 'specialist', multiple: true },
       { key: 'pgcb',         label: 'PGCB — Plano de Gestão de Contrabalanços de Biodiversidade',    docType: 'PGCB_PREL', crossRef: 'pgcb' },
-      { key: 'par',          label: 'PAR — Plano de Acção de Reassentamento',                        docType: 'REIA', crossRef: 'specialist' },
+      { key: 'par',          label: 'PAR — Plano de Acção de Reassentamento',                        docType: 'PAR',  crossRef: 'par' },
     ],
     skipLabels: ['Resumo Não-Técnico'],
     catAplusKey: { key: 'ri', label: 'Parecer do Revisor Independente (obrigatório Cat. A+)', docType: 'REIA', crossRef: 'ri' }
@@ -620,7 +622,15 @@ Objectivos desta análise:
 (b) Verificar sistematicamente se o EIA respondeu a cada uma.
 (c) Identificar objecções não resolvidas ou respondidas de forma inadequada ou superficial.
 (d) Produzir secção adicional ## AVALIAÇÃO CRUZADA — PARECER RI vs. EIA com tabela: Objecção/Recomendação RI | Referência no EIA | Resposta adequada | Estado | Acção requerida.
-Uma objecção marcada como não resolvida é automaticamente Questão Fatal Nível 1.`
+Uma objecção marcada como não resolvida é automaticamente Questão Fatal Nível 1.`,
+
+  par: `MODO: ANÁLISE CRUZADA — PAR VS. DOCUMENTO PRINCIPAL
+Tens acesso às análises dos documentos anteriores desta sessão (ver abaixo).
+Objectivos desta análise:
+(a) Verificar se a população afectada descrita no PAR corresponde à área de influência directa/indirecta definida no documento principal.
+(b) Verificar se os impactos sociais identificados no documento principal (Art. 11.2.k Decreto 54/2015) estão reflectidos no PAR.
+(c) Aplicar Módulo F na íntegra (conformidade processual Decreto 31/2012 + observações IFC PS5/ESS5).
+(d) Produzir secção adicional ## AVALIAÇÃO CRUZADA — PAR VS. DOCUMENTO PRINCIPAL com tabela: Impacto social/afectação (doc. principal) | Reflectido no PAR | Adequação | Lacuna.`
 };
 
 function buildCrossRefContext() {
@@ -1150,11 +1160,12 @@ function buildSystem(dt, cat, sec, loc) {
     'PGCB_FINAL': `ÂMBITO DO DOCUMENTO — PGCB Final:\nAvaliar contra Art. IV.1.2 + Anexo I do DM 55/2022. Pontos críticos: (1) Ano de referência vs início real das operações [Art.4(1)]; (2) NPL vs GL por KBA vs não-KBA, uplift ≥15% [Art.4(2)(3)]; (3) Obrigações diferidas ou excluídas [Art.III.6(b)(c)]; (4) Áreas receptoras identificadas [Sec.II.5]; (5) Consistência buffer vs parâmetros métrica; (6) Impactos indirectos integrados nas metas; (7) Permanência — mecanismo de financiamento [Art.III.6(g)].`,
     'EPDA': `ÂMBITO DO DOCUMENTO — EPDA & TdR (Termo de Referência para o EIA):\nAvaliar contra Art. 10 do Decreto 54/2015. NÃO flags a ausência do REIA.\nFOCO PRINCIPAL: Qualidade do Termo de Referência (TdR) — o TdR é o produto regulatório central do EPDA; é aqui que se define o âmbito do EIA e onde se pode assegurar que questões críticas são obrigatoriamente estudadas. A secção ANÁLISE DO TERMO DE REFERÊNCIA é OBRIGATÓRIA para EPDAs.\nVerificar se o TdR inclui e delimita adequadamente cada um dos seguintes componentes:\nA. ENQUADRAMENTO E ÂMBITO: Descrição completa do projecto, área de influência directa e indirecta, fase de ciclo de vida coberta, alternativas a estudar, articulação com planos de uso de terra.\nB. LINHA DE BASE BIOFÍSICA: Qualidade da água/ar/solo; geomorfologia; oceanografia e batimetria (para projectos marinhos); baseline de ruído/vibração subaquático — OBRIGATÓRIO para projectos com fontes sonoras (sísmica, perfuração, operação de plataformas, construção offshore). Ausência do baseline acústico num projecto de sísmica é uma lacuna crítica.\nC. LINHA DE BASE BIODIVERSIDADE: Protocolos específicos por categoria de espécie-alvo: tartarugas marinhas (câmaras, transectos nocturnos em praias de nidificação); cetáceos (PAM passiva, transectos visuais); aves migratórias e costeiras; elasmobrânquios; espécies CR/EN do SIBMOZ. Amostragem obrigatória na época de maior sensibilidade (não apenas numa época). Referência explícita às 30 KBAs de Moçambique (MTA/WCS 2021) e ao SIBMOZ. Mapeamento de zonas de nidificação, agregação e corredores de migração.\nD. TRIAGEM PGCB (DM 55/2022 Art. V.2): A triagem da necessidade de PGCB é OBRIGATÓRIA na fase EPDA — o TdR deve prever a sua realização durante o EIA. Verificar se o TdR prevê: (i) avaliação GL vs NPL — GL obrigatório para KBAs e habitats de alto valor de biodiversidade (Anexo V Decreto 54/2015); (ii) definição do ano de referência para contrabalanços antes do início das operações; (iii) identificação de áreas receptoras.\nE. METODOLOGIA DE AVALIAÇÃO DE IMPACTOS: Critérios de significância definidos; avaliação cumulativa (incl. outros projectos na área); impactos indirectos; hierarquia de mitigação explícita (evitar > minimizar > restaurar > compensar); impactos sobre serviços de ecossistema.\nF. RESTRIÇÕES OPERACIONAIS SAZONAIS: O TdR deve exigir que o EIA produza uma matriz de restrições sazonais com janelas operacionais baseadas em fenologia (nidificação, migração, desova, parto de mamíferos marinhos, épocas de pesca). Para offshore/marinho: calendário de tartarugas marinhas, períodos de veda de pesca, janelas de actividade de cetáceos.\nG. PGA: Requisitos mínimos: programas de monitorização de biodiversidade com indicadores e periodicidade; plano de emergência/derrame. Para sector petrolífero (Decreto 56/2010): plano de descomissionamento e reabilitação; protocolo de resposta a emergências.\nH. PARTICIPAÇÃO PÚBLICA NA FASE EIA: O TdR deve assegurar PP conforme DM 130/2006 (≥20% universo afectado, relatório de PP, mecanismo de reclamações).\nI. REI (APENAS Cat. A+, DM 118/2022): O TdR deve prever realização do REI. Se o projecto for classificado Cat. A mas deveria ser A+, a ausência do REI no TdR é questão crítica nível 1.\nAVISO CATEGORIZAÇÃO: Verificar se o EPDA conclui erroneamente Cat. A quando o projecto deveria ser A+ — projectos offshore de grande escala, marinhos em zonas sensíveis, próximos de áreas de conservação ou KBAs devem ser escrutinados contra os critérios do Decreto 54/2015 Anexo I.`,
     'REIA': `ÂMBITO DO DOCUMENTO — REIA:\nAvaliar contra Art. 11 do Decreto 54/2015 e DM 129/2006. Aplicar análise completa de todos os módulos.`,
-    'EAS': `ÂMBITO DO DOCUMENTO — EAS:\nAvaliar contra Art. 12 do Decreto 54/2015. Categorização B. NÃO aplicar requisitos de Cat. A+/A. PGCB/contrabalanços NÃO são exigíveis num EAS — marcar SEC.6 como ⚪ N/A na totalidade e não avaliar. Não exigir PGCB nem compensação de biodiversidade. Verificar apenas Secções 1–4 (+ SEC.5 se PGA submetido).`
+    'EAS': `ÂMBITO DO DOCUMENTO — EAS:\nAvaliar contra Art. 12 do Decreto 54/2015. Categorização B. NÃO aplicar requisitos de Cat. A+/A. PGCB/contrabalanços NÃO são exigíveis num EAS — marcar SEC.6 como ⚪ N/A na totalidade e não avaliar. Não exigir PGCB nem compensação de biodiversidade. Verificar apenas Secções 1–4 (+ SEC.5 se PGA submetido).`,
+    'PAR': `ÂMBITO DO DOCUMENTO — PAR (Plano de Acção de Reassentamento):\nAvaliar EXCLUSIVAMENTE contra o MÓDULO REASSENTAMENTO (Decreto 31/2012) abaixo. NÃO aplicar Módulo D (biodiversidade), questões fatais, PGCB, ou checklist BIOFUND/WCS — marcar essas secções ⚪ N/A. Estrutura da análise: (1) Conformidade processual/legal Nível 1 — Decreto 31/2012; (2) Observações Nível 2 face a IFC PS5/Banco Mundial ESS5, explicitamente rotuladas como referência internacional e não como requisito legal moçambicano. NÃO flags a ausência do REIA — pode ser analisado isoladamente.`
   };
   const scopeNote = `\nMODO: ANÁLISE DE DOCUMENTO ISOLADO. NÃO flags a ausência de outros documentos do processo — esses podem existir separadamente.\n${docScope[dt] || ''}`;
   return `És um analista especializado em avaliação de impacto ambiental em Moçambique. A tua função é analisar documentos do processo de AIA e produzir um relatório estruturado de conformidade legal.
-ÂMBITO — Foco PRIMÁRIO: Ambiente e biodiversidade (linha de base, hierarquia de mitigação, contrabalanços, questões fatais, KBAs). Foco SECUNDÁRIO: Conformidade processual e estrutural. FORA DE ÂMBITO: Análise aprofundada de reassentamento e saúde ocupacional — sinalizar apenas.
+ÂMBITO — Foco PRIMÁRIO: Ambiente e biodiversidade (linha de base, hierarquia de mitigação, contrabalanços, questões fatais, KBAs). Foco SECUNDÁRIO: Conformidade processual e estrutural, incluindo conformidade processual do reassentamento (Decreto 31/2012). FORA DE ÂMBITO: Análise aprofundada de aspectos sociais gerais e saúde ocupacional — sinalizar apenas. Para reassentamento: a conformidade legal/processual É analisada (Nível 1); a adequação da compensação/restauração de meios de subsistência é avaliada APENAS por referência a IFC PS5/Banco Mundial ESS5 (Nível 2, rotulado explicitamente como standard internacional, não lei moçambicana) — nunca julgamento de especialista social.
 ${scopeNote}
 DOCUMENTO: ${dt||'?'} | CATEGORIA: ${cat||'?'} | SECTOR: ${sec||'?'} | LOCALIZAÇÃO: ${loc||'?'}
 LEGISLAÇÃO:
@@ -1163,6 +1174,7 @@ LEGISLAÇÃO:
 - DM 130/2006 — Participação Pública (mínimo 20% do universo afectado)
 - DM 55/2022 — Contrabalanços de Biodiversidade (PGCB, métricas, NPL/GL, financiamento)
 - DM 118/2022 — REI: APENAS para Categoria A+. NUNCA flags a ausência de REI para projectos que não sejam A+.
+- Decreto 31/2012 — Reassentamento resultante de Actividades Económicas (PAR, CTASR, participação pública específica, restrições de localização)
 - Decreto 18/2004 — Padrões de Qualidade Ambiental | Decreto 83/2014 — Resíduos Perigosos
 - Decreto 25/2008 — Espécies Exóticas Invasoras | Lei 5/2017 + Dec. 89/2017 — Biodiversidade${sectExtra}
 ${locExtra}
@@ -1181,7 +1193,11 @@ QUESTÕES FATAIS (Anexo V Decreto 54/2015) — verificar se o documento demonstr
 Verificar referência ao SIBMOZ e às 30 KBAs de Moçambique.
 OBRIGATÓRIO — QUESTÕES FATAIS: Para cada um dos 5 critérios acima, produzir uma avaliação explícita e individual na secção QUESTÕES CRÍTICAS. Se o documento for silencioso relativamente a um critério, essa omissão é em si uma lacuna Nível 1 que deve ser assinalada explicitamente: "O documento não demonstra ausência de impactos em [critério X] — omissão constitui lacuna Nível 1 nos termos do Anexo V do Decreto 54/2015." Nunca colapsar os 5 critérios numa única linha genérica.
 PGCB (DM 55/2022) — DISTINÇÃO CRÍTICA: (1) A determinação de inaplicabilidade pelo proponente em fase EPDA é sempre inadmissível — a avaliação de impactos residuais só pode ser feita após EIA completo. (2) NÃO assumir automaticamente que PGCB será necessário — para actividades temporárias (ex: sísmica 3D), os impactos residuais podem não justificar contrabalanços. A mensagem correcta é: "a determinação é prematura; o TdR deve prever triagem formal no EIA com base em impactos residuais quantificados após aplicação de todas as medidas de mitigação." Verificar também: NPL vs GL (GL para KBAs e habitats de alto valor de biodiversidade, Anexo V Decreto 54/2015, uplift ≥15%); ano de referência; áreas receptoras; mecanismo de financiamento (conta bancária Moçambique, ≥50% antes da licença de operação).
-PADRÕES IFC/EQUADOR: NÃO são obrigação legal por defeito em Moçambique. Aplicar APENAS se o proponente os invocar explicitamente no documento. A obrigação legal base é sempre a legislação nacional moçambicana.
+REASSENTAMENTO (Decreto 31/2012) — aplica-se sempre que o documento indicar deslocação de população, independentemente do tipo de documento em análise (incluir mesmo quando dt≠PAR, como sinalização Nível 1 de que um PAR é devido):
+NOTA DE ENQUADRAMENTO: O Decreto 31/2012 (Art.15.3) refere-se ao Decreto n.° 45/2004, entretanto revogado pelo Decreto 54/2015 — lacuna do próprio quadro legal, não assinalar como não-conformidade do proponente.
+NÍVEL 1 (conformidade processual/legal, Decreto 31/2012): (a) PAR elaborado e submetido à aprovação do Governo do Distrito [Art.9.1]; (b) parecer de conformidade do sector de Ordenamento do Território, ouvidos Agricultura/Administração Local/Obras Públicas [Art.9.2]; (c) parecer técnico da CTASR [Art.7.1.b]; (d) dados físicos e socioeconómicos: delimitação da área, quantificação e perfil socioeconómico das famílias, grupos vulneráveis (idosos, famílias chefiadas por mulheres, deficientes) [Art.20]; (e) avaliação de bens tangíveis/intangíveis e critérios de compensação definidos explicitamente [Art.21]; (f) Plano de Acção com matriz institucional, cronograma e orçamento (incl. compensações) [Art.22]; (g) mínimo 4 consultas públicas específicas do reassentamento, actas em 5 dias úteis assinadas por CTASR/afectados/proponente [Art.23]; (h) local evita áreas de erosão/inundáveis e áreas protegidas [Art.17.2 — CRÍTICO]. Ausência de PAR quando há reassentamento, ou ausência de qualquer um destes elementos, é lacuna Nível 1 citando o artigo específico do Decreto 31/2012.
+NÍVEL 2 (IFC PS5/Banco Mundial ESS5 — SEMPRE rotular como "face ao standard internacional IFC PS5/ESS5", NUNCA como incumprimento legal moçambicano, pois o Decreto 31/2012 não especifica estes critérios): compensação a custo de reposição vs. apenas "nível de renda restabelecido" [Art.10.a é mais vago]; data de corte (cut-off date) definida; monitoria da restauração de meios de subsistência por período definido pós-reassentamento; mecanismo de reclamações acessível para além da Inspecção do Ambiente [Art.24]; medidas diferenciadas para grupos vulneráveis (não apenas "ouvidos" [Art.20.3.m]); impactos sobre comunidades de acolhimento; consulta desagregada por género.
+PADRÕES IFC/EQUADOR: NÃO são obrigação legal por defeito em Moçambique. Aplicar APENAS se o proponente os invocar explicitamente no documento, EXCEPTO no domínio de reassentamento onde IFC PS5/ESS5 são aplicados sistematicamente como Nível 2 rotulado (ver acima) dado que o Decreto 31/2012 não define critérios de adequação. A obrigação legal base é sempre a legislação nacional moçambicana.
 QUALIDADE DOS DADOS DE LINHA DE BASE: Sinalizar quando: (a) dados para espécies CR/EN têm mais de 5 anos; (b) há indicadores de reutilização de estudos anteriores — mesmas referências de 2010–2015, ausência de literatura científica recente sobre mamíferos marinhos, cetáceos e biodiversidade marinha na região; (c) referências bibliográficas idênticas em múltiplos documentos da mesma ronda de licenciamento (indicativo de copy-paste). Para a zona do Canal de Moçambique/Bazaruto/São Sebastião, existe literatura científica recente sobre cetáceos, telemetria e megafauna marinha que deve ser citada.
 IMPACTOS CUMULATIVOS: Para projectos de uma mesma ronda de licenciamento ou área geográfica, a ausência de avaliação de impactos cumulativos — incluindo sobreposição espacial e temporal de operações sísmicas de múltiplos blocos — é uma lacuna sistémica. Sinalizar com ênfase, especialmente quando vários blocos operam simultaneamente no mesmo sistema marinho.
 MAMÍFEROS MARINHOS E SÍSMICA: Existem casos documentados internacionalmente e em Moçambique de mortalidade e perturbação de mamíferos marinhos associada a campanhas sísmicas. Este facto é base para recomendar protocolos reforçados de MMO/PAM, limites de acção (trigger levels) específicos por espécie, e restrições operacionais sazonais. Não tratar como mera boa prática — tratar como requisito de precaução fundamentado.
@@ -1317,6 +1333,7 @@ Produzir tabela markdown completa com 3 colunas — Dimensão | Estado | Fundame
 | Hierarquia de Mitigação | 🔴/🟡/🟢/⚪ | [uma frase] |
 | PGCB / Contrabalanços | 🔴/🟡/🟢/⚪ | [uma frase] |
 | Participação Pública | 🔴/🟡/🟢/⚪ | [uma frase] |
+| Reassentamento (Decreto 31/2012) | 🔴/🟡/🟢/⚪ | [uma frase — ⚪ se o documento não indica reassentamento] |
 | Água e Resíduos | 🔴/🟡/🟢/⚪ | [uma frase] |
 | Requisitos Sectoriais | 🔴/🟡/🟢/⚪ | [uma frase] |
 Legenda: 🔴 Crítico | 🟡 Importante | 🟢 Adequado | ⚪ N/A
@@ -1340,6 +1357,12 @@ Numeradas. Para cada questão: **Lacuna:** [descrição específica] | **Base le
 ### Hierarquia de Mitigação
 ### Necessidade de PGCB
 ### Adequação do PGCB (se presente)
+## REASSENTAMENTO
+Se o documento não indica reassentamento de população, escrever apenas uma linha: "Não aplicável — o documento não indica reassentamento de população." Caso contrário, produzir:
+### Conformidade Processual e Legal (Decreto 31/2012) — Nível 1
+Avaliação explícita de cada elemento do Art.9, Art.20–23 e Art.17.2 (ver instruções REASSENTAMENTO acima). Citar o artigo específico para cada lacuna.
+### Observações Face a Standards Internacionais (IFC PS5 / Banco Mundial ESS5) — Nível 2
+Rotular explicitamente cada observação como "face ao IFC PS5/ESS5" — nunca como não-conformidade legal moçambicana.
 ## CHECKLIST DE CONFORMIDADE — HIERARQUIA DE MITIGAÇÃO
 Produzir tabela de pontuação por secção (marcar ⚪ N/A para secções não aplicáveis ao documento em análise):
 | Secção | Itens | ✓ Conformes | ◑ Lacunas | ✗ Ausentes | Score | Estado |
@@ -1519,7 +1542,7 @@ function renderResults() {
   const docNum = session.docs.length;
   const scopeNote = analysis.isFinal
     ? `<div class="scope" style="background:var(--green-bg);border-color:#a0d4b0;color:var(--green);">⊞ Parecer Final Consolidado — ${docNum} documento(s) analisado(s) nesta sessão.</div>`
-    : `<div class="scope">ⓘ ${analysis.docLabel ? `A analisar: <strong>${analysis.docLabel}</strong> · Doc. ${docNum} de ${getAllExpectedDocs().length||'?'} esperados. ` : ''}Foco em ambiente e biodiversidade. Reassentamento e saúde ocupacional sinalizados mas não analisados em profundidade.</div>`;
+    : `<div class="scope">ⓘ ${analysis.docLabel ? `A analisar: <strong>${analysis.docLabel}</strong> · Doc. ${docNum} de ${getAllExpectedDocs().length||'?'} esperados. ` : ''}Foco em ambiente e biodiversidade. Saúde ocupacional e aspectos sociais gerais sinalizados mas não analisados em profundidade. Reassentamento: conformidade legal (Decreto 31/2012) analisada; adequação da compensação avaliada apenas face a standards internacionais (IFC PS5/ESS5).</div>`;
   let h = `${scopeNote}
     <div class="rh"><div><div class="rp">${analysis.proj||'Projecto'}</div><div class="rs">${analysis.dt} · Cat. ${analysis.cat||'?'} · ${analysis.sec||'—'}</div></div><div class="rt">${analysis.ts}</div></div>
     <button class="copy-btn" onclick="copyAll()">⊞ Copiar texto completo</button>
