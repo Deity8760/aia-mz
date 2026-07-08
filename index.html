@@ -544,10 +544,13 @@ async function logUsage(dt, cat, sec, filename) {
   ];
 
   if (APPS_SCRIPT_LOG_URL && !APPS_SCRIPT_LOG_URL.startsWith('PASTE_')) {
-    const form = new URLSearchParams();
-    Object.entries(payload).forEach(([k, v]) => form.set(k, v == null ? '' : v));
+    // GET, not POST: Apps Script Web Apps redirect internally, and browsers
+    // downgrade POST bodies to GET on redirect — sending as GET from the
+    // start avoids losing the payload in transit.
+    const qs = new URLSearchParams();
+    Object.entries(payload).forEach(([k, v]) => qs.set(k, v == null ? '' : v));
     logs.push(
-      fetch(APPS_SCRIPT_LOG_URL, { method: 'POST', body: form })
+      fetch(`${APPS_SCRIPT_LOG_URL}?${qs.toString()}`, { method: 'GET' })
         .catch(e => console.warn('Apps Script log failed:', e))
     );
   }
