@@ -445,10 +445,10 @@
       <input type="text" id="projName" placeholder="Ex: Projecto Mineiro de Moatize" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:var(--serif);font-size:13px;outline:none;border-radius:var(--r);">
     </div>
     <div class="sb-sec" style="background:var(--green-bg);border-bottom-color:#c8ddd0;">
-      <div class="lbl" style="color:var(--green);">Identificação (opcional)</div>
-      <div style="font-size:11px;color:var(--green);margin-bottom:8px;line-height:1.5;opacity:0.85;">Para rastrear o uso e receber o relatório por email.</div>
-      <input type="text" id="userName" placeholder="Nome do analista" style="width:100%;background:var(--bg);border:1px solid #c8ddd0;color:var(--text);padding:7px 10px;font-family:var(--serif);font-size:13px;outline:none;border-radius:var(--r);margin-bottom:6px;">
-      <input type="email" id="userEmail" placeholder="Email institucional" style="width:100%;background:var(--bg);border:1px solid #c8ddd0;color:var(--text);padding:7px 10px;font-family:var(--serif);font-size:13px;outline:none;border-radius:var(--r);">
+      <div class="lbl" style="color:var(--green);">Identificação (obrigatório)</div>
+      <div style="font-size:11px;color:var(--green);margin-bottom:8px;line-height:1.5;opacity:0.85;">Necessário para gerar a análise — regista o uso e permite receber o relatório por email.</div>
+      <input type="text" id="userName" placeholder="Nome do analista *" required style="width:100%;background:var(--bg);border:1px solid #c8ddd0;color:var(--text);padding:7px 10px;font-family:var(--serif);font-size:13px;outline:none;border-radius:var(--r);margin-bottom:6px;">
+      <input type="email" id="userEmail" placeholder="Email institucional *" required style="width:100%;background:var(--bg);border:1px solid #c8ddd0;color:var(--text);padding:7px 10px;font-family:var(--serif);font-size:13px;outline:none;border-radius:var(--r);">
     </div>
     <div class="sb-sec">
       <div class="lbl">Carregar PDF(s)</div>
@@ -774,7 +774,7 @@ async function emitFinalParecer() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'deepseek-chat', max_tokens: 16000, temperature: 0.2,
+        model: 'deepseek-v4-pro', max_tokens: 16000, temperature: 0.2,
         messages: [
           { role: 'system', content: buildSynthesisSystem() },
           { role: 'user',   content: userMsg }
@@ -1413,6 +1413,13 @@ async function go() {
   const notes = document.getElementById('notes').value;
   const pasteText = document.getElementById('pasteText').value;
 
+  const userNameVal  = (document.getElementById('userName')?.value || '').trim();
+  const userEmailVal = (document.getElementById('userEmail')?.value || '').trim();
+  if (!userNameVal || !userEmailVal) {
+    alert('Por favor preencha o seu nome e email institucional (painel "Identificação") antes de analisar.');
+    document.getElementById(!userNameVal ? 'userName' : 'userEmail').focus();
+    return;
+  }
   if (!dt) { alert('Por favor seleccione o tipo de documento.'); return; }
   if (!files.length && !pasteText && !notes) {
     alert('Por favor carregue um documento, cole texto, ou forneça notas.'); return;
@@ -1461,7 +1468,7 @@ async function go() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'deepseek-chat', max_tokens: 16000, temperature: 0.2,
+        model: 'deepseek-v4-pro', max_tokens: 16000, temperature: 0.2,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user',   content: userMsg }
@@ -1569,7 +1576,7 @@ function renderResults() {
     <div class="rh"><div><div class="rp">${analysis.proj||'Projecto'}</div><div class="rs">${analysis.dt} · Cat. ${analysis.cat||'?'} · ${analysis.sec||'—'}</div></div><div class="rt">${analysis.ts}</div></div>
     <button class="copy-btn" onclick="copyAll()">⊞ Copiar texto completo</button>
     <button class="copy-btn" onclick="exportWord()" style="margin-left:6px;">⬇ Exportar Word</button>
-    <button class="copy-btn" onclick="emailReport()" style="margin-left:6px;">✉ Enviar por email</button>`;
+    <button class="copy-btn" id="emailBtn" onclick="emailReport()" style="margin-left:6px;">✉ Enviar por email (com anexo Word)</button>`;
   if (!secs.length) {
     h += `<div class="sb">${fmt(analysis.raw)}</div>`;
   } else {
@@ -1649,8 +1656,8 @@ async function copyAll(){
   const btns=document.querySelectorAll('.copy-btn');
   btns.forEach(b=>{const o=b.textContent;b.textContent='✓ Copiado';setTimeout(()=>b.textContent=o,2000);});
 }
-function exportWord(){
-  if(!analysis) return;
+function buildWordDoc(){
+  if(!analysis) return null;
   const meta=`${analysis.dt} | Categoria ${analysis.cat||'?'} | ${analysis.sec||'—'} | ${analysis.ts}`;
   function toWordHtml(txt){
     // Normalise line endings first — \r breaks table row detection
@@ -1693,30 +1700,70 @@ function exportWord(){
   }
   const body=toWordHtml(analysis.raw);
   const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>@page{margin:2.5cm}body{font-family:Arial,sans-serif;font-size:11pt;line-height:1.6;color:#1a1714}h1{font-size:16pt;color:#5a3e1b}h2{font-size:14pt;color:#5a3e1b;margin-top:16pt}h3{font-size:12pt;color:#8a6030;margin-top:10pt}.meta{font-size:9pt;color:#888;margin-bottom:16pt}hr{border:none;border-top:2pt solid #5a3e1b;margin:12pt 0}</style></head><body><h1>Relatório de Análise de Conformidade AIA</h1><p class="meta">${esc(meta)}</p><hr><p style="font-family:Arial;font-size:11pt;margin:4pt 0">${body}</p></body></html>`;
-  const blob=new Blob(['﻿',html],{type:'application/msword'});
+  const base=(analysis.filenames&&analysis.filenames.length>0?analysis.filenames[0].replace(/\.[^.]+$/,''):(analysis.proj||'Projecto'));
+  const filename=(base+'_analise_'+new Date().toISOString().slice(0,10)).replace(/[^a-zA-Z0-9_\-\.]/g,'_');
+  return { html, filename };
+}
+function exportWord(){
+  const doc = buildWordDoc();
+  if(!doc) return;
+  const blob=new Blob(['﻿',doc.html],{type:'application/msword'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  const base=(analysis.filenames&&analysis.filenames.length>0?analysis.filenames[0].replace(/\.[^.]+$/,''):(analysis.proj||'Projecto'));
-  a.href=url; a.download=(base+'_analise_'+new Date().toISOString().slice(0,10)+'.doc').replace(/[^a-zA-Z0-9_\-\.]/g,'_');
+  a.href=url; a.download=doc.filename+'.doc';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 
-// ── EMAIL REPORT ───────────────────────────────────────────────────────────
-function emailReport() {
+// ── EMAIL REPORT (with Word attachment, sent via Apps Script) ───────────────
+// GET-only: Google Apps Script Web Apps drop POST bodies on their internal
+// redirect (confirmed empirically — POST requests register as doGet with no
+// data). Large content is therefore sent as a sequence of small GET calls,
+// each carrying one chunk, buffered server-side (CacheService) and
+// reassembled + emailed on receipt of the final chunk.
+const EMAIL_CHUNK_SIZE = 1200; // raw chars per GET call, safely under URL length limits
+
+async function emailReport() {
   if (!analysis) return;
   const email = (document.getElementById('userEmail')?.value || '').trim();
   if (!email) {
     alert('Por favor insira o seu email no campo "Identificação" no painel lateral antes de enviar.');
     return;
   }
+  if (!APPS_SCRIPT_LOG_URL || APPS_SCRIPT_LOG_URL.startsWith('PASTE_')) {
+    alert('Envio de email com anexo não está configurado nesta instalação.');
+    return;
+  }
+  const doc = buildWordDoc();
+  if (!doc) return;
+
   const proj = analysis.proj || analysis.dt;
   const subject = `AIA·MZ — ${proj} — Relatório de Conformidade`;
-  const secs = parse(analysis.raw);
-  const compact = secs.slice(0, 3).map(s => `## ${s.t}\n${s.c}`).join('\n');
-  const note = '\n\n─────────────────────────────────────────\nNota: este email contém as primeiras secções do relatório.\nPara o relatório completo, use "⬇ Exportar Word" ou "⊞ Copiar texto completo" na aplicação AIA·MZ.\n─────────────────────────────────────────';
-  const body = `Relatório de Conformidade AIA·MZ\nGerado em: ${analysis.ts}\nDocumento: ${analysis.dt} | Categoria: ${analysis.cat||'?'} | Sector: ${analysis.sec||'?'}\n\n${compact}${note}`;
-  window.location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const requestId = 'r' + Date.now() + Math.random().toString(36).slice(2, 8);
+  const total = Math.max(1, Math.ceil(doc.html.length / EMAIL_CHUNK_SIZE));
+
+  const btn = document.getElementById('emailBtn');
+  const origLabel = btn ? btn.textContent : null;
+  if (btn) { btn.disabled = true; }
+
+  try {
+    for (let i = 0; i < total; i++) {
+      if (btn) btn.textContent = `✉ A enviar… (${i + 1}/${total})`;
+      const chunk = doc.html.slice(i * EMAIL_CHUNK_SIZE, (i + 1) * EMAIL_CHUNK_SIZE);
+      const qs = new URLSearchParams({
+        action: 'emailChunk', requestId, idx: String(i), total: String(total),
+        chunk, to: email, subject, filename: doc.filename
+      });
+      const r = await fetch(`${APPS_SCRIPT_LOG_URL}?${qs.toString()}`, { method: 'GET' });
+      if (!r.ok) throw new Error(`HTTP ${r.status} no fragmento ${i + 1}/${total}`);
+    }
+    alert(`Relatório enviado para ${email} (com anexo Word).`);
+  } catch (e) {
+    console.warn('Email send failed:', e);
+    alert('Não foi possível enviar o email automaticamente. Use "⬇ Exportar Word" e anexe manualmente ao email.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = origLabel; }
+  }
 }
 
 // ── INFO MODAL ─────────────────────────────────────────────────────────────
