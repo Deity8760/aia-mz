@@ -517,23 +517,42 @@
 let files = [], analysis = null, activeTab = 'results';
 let apiKey = sessionStorage.getItem('aia_dskey') || 'sk-56463591d26c4dd7a96a5c71697fec19';
 
-// ── SUPABASE LOGGING ────────────────────────────────────────────────────────
+// ── USAGE LOGGING ──────────────────────────────────────────────────────────
+// Logs to two independent destinations so a firewall/ad-blocker on one
+// network doesn't silently zero out all usage tracking (Supabase's domain
+// is a common target for tracker-blockers; Google's is not).
 const SUPA_URL = 'https://kikticuxnmrmzdezwsvm.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtpa3RpY3V4bm1ybXpkZXp3c3ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MzczMzAsImV4cCI6MjA5MjIxMzMzMH0.DaK4qKlQYUHM3YdiQAruN92R_iE4Q8yjacepETDaouM';
+const APPS_SCRIPT_LOG_URL = 'https://script.google.com/macros/s/AKfycbyPA35OvHINvKr_BmTXX579f8UgfymU5YFltHaz-tbBbBlFXrn0UoPcyth9uol5rlwudg/exec';
+
 async function logUsage(dt, cat, sec, filename) {
-  try {
-    let ip = null;
-    try { const r = await fetch('https://api.ipify.org?format=json'); ip = (await r.json()).ip; } catch(e) {}
-    await fetch(`${SUPA_URL}/rest/v1/aia_usage`, {
+  let ip = null;
+  try { const r = await fetch('https://api.ipify.org?format=json'); ip = (await r.json()).ip; } catch(e) {}
+
+  const payload = {
+    user_name:  (document.getElementById('userName')?.value || '').trim() || null,
+    user_email: (document.getElementById('userEmail')?.value || '').trim() || null,
+    ip_address: ip, doc_type: dt, category: cat, sector: sec, filename
+  };
+
+  const logs = [
+    fetch(`${SUPA_URL}/rest/v1/aia_usage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({
-        user_name:  (document.getElementById('userName')?.value || '').trim() || null,
-        user_email: (document.getElementById('userEmail')?.value || '').trim() || null,
-        ip_address: ip, doc_type: dt, category: cat, sector: sec, filename
-      })
-    });
-  } catch(e) { console.warn('Supabase log:', e); }
+      body: JSON.stringify(payload)
+    }).catch(e => console.warn('Supabase log failed:', e))
+  ];
+
+  if (APPS_SCRIPT_LOG_URL && !APPS_SCRIPT_LOG_URL.startsWith('PASTE_')) {
+    const form = new URLSearchParams();
+    Object.entries(payload).forEach(([k, v]) => form.set(k, v == null ? '' : v));
+    logs.push(
+      fetch(APPS_SCRIPT_LOG_URL, { method: 'POST', body: form })
+        .catch(e => console.warn('Apps Script log failed:', e))
+    );
+  }
+
+  await Promise.allSettled(logs);
 }
 
 // ── SESSION ────────────────────────────────────────────────────────────────
