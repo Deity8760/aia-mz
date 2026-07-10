@@ -269,21 +269,6 @@
 </head>
 <body>
 
-<!-- ── API KEY MODAL ── -->
-<div class="modal-overlay hidden" id="keyOverlay">
-  <div class="modal-box">
-    <div class="modal-logo">AIA·MZ</div>
-    <div class="modal-title">Chave de acesso DeepSeek</div>
-    <div class="modal-sub">
-      Introduza a sua chave API DeepSeek para activar a análise. A chave é guardada apenas nesta sessão do browser e nunca transmitida para qualquer servidor.<br><br>
-      Sem chave? Criar conta em <a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a>.
-    </div>
-    <input class="modal-input" type="password" id="keyInput" placeholder="sk-••••••••••••••••••••••••••••••••" autocomplete="off" />
-    <button class="modal-btn" id="keySaveBtn" onclick="saveApiKey()">Confirmar e continuar</button>
-    <div class="modal-hint">A chave destina-se a ser usada directamente com a API DeepSeek. Não é armazenada de forma permanente.</div>
-  </div>
-</div>
-
 <!-- ── INFO MODAL ── -->
 <div class="info-overlay hidden" id="infoOverlay" onclick="hideInfoModal(event)">
   <div class="info-box" onclick="event.stopPropagation()">
@@ -382,9 +367,8 @@
       <div class="logo">AIA·MZ</div>
       <div class="logo-sub">Analisador de EIA — Moçambique</div>
       <div class="key-status" id="keyStatus">
-        <span class="key-dot missing" id="keyDot"></span>
-        <span class="key-label" id="keyLabel">Chave não configurada</span>
-        <span class="key-change" onclick="showKeyModal()">configurar</span>
+        <span class="key-dot ok"></span>
+        <span class="key-label">Ligado (via proxy seguro)</span>
       </div>
     </div>
     <div class="sb-sec">
@@ -515,7 +499,10 @@
 <script>
 // ── STATE ──────────────────────────────────────────────────────────────────
 let files = [], analysis = null, activeTab = 'results';
-let apiKey = sessionStorage.getItem('aia_dskey') || 'sk-56463591d26c4dd7a96a5c71697fec19';
+// Requests go through a Cloudflare Worker proxy so the real DeepSeek API key
+// never ships to the browser (previous embedded-key approach was scraped
+// and drained the account — see project notes).
+const DEEPSEEK_PROXY_URL = 'https://aia-mz-proxy.sean-nazerali.workers.dev/';
 
 // ── USAGE LOGGING ──────────────────────────────────────────────────────────
 // Logs to two independent destinations so a firewall/ad-blocker on one
@@ -770,9 +757,9 @@ async function emitFinalParecer() {
     const docList = session.docs.map((d,i) => `${i+1}. ${d.label} (${d.filename})`).join('\n');
     const userMsg = `Documentos analisados nesta sessão:\n${docList}\n\nContexto do projecto: ${session.proj||'—'} | Fase: ${session.phase} | Categoria: ${session.category||'?'} | Sector: ${session.sector||'?'}\n\nEmitir parecer final consolidado.${ctx}`;
 
-    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    const resp = await fetch(DEEPSEEK_PROXY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'deepseek-v4-pro', max_tokens: 16000, temperature: 0.2,
         messages: [
@@ -834,40 +821,9 @@ APROVAÇÃO / APROVAÇÃO CONDICIONADA / DEVOLUÇÃO PARA REVISÃO / RECUSA — 
 Carta formal completa em nome da DINAB/DINAMC/MTA, cobrindo todas as questões não resolvidas e a recomendação final. Ortografia pré-1990.`;
 }
 
-// ── API KEY MODAL ──────────────────────────────────────────────────────────
-function showKeyModal() {
-  document.getElementById('keyOverlay').classList.remove('hidden');
-  document.getElementById('keyInput').focus();
-}
-function hideKeyModal() {
-  document.getElementById('keyOverlay').classList.add('hidden');
-}
-function saveApiKey() {
-  const v = document.getElementById('keyInput').value.trim();
-  if (!v) { document.getElementById('keyInput').style.borderColor = 'var(--red)'; return; }
-  apiKey = v;
-  sessionStorage.setItem('aia_dskey', v);
-  hideKeyModal();
-  updateKeyStatus();
-}
-document.getElementById('keyInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveApiKey(); });
-function updateKeyStatus() {
-  const dot = document.getElementById('keyDot');
-  const label = document.getElementById('keyLabel');
-  const change = document.querySelector('.key-change');
-  if (apiKey) {
-    dot.className = 'key-dot ok';
-    label.textContent = 'DeepSeek · ' + apiKey.slice(0,8) + '…';
-    change.textContent = 'alterar';
-  } else {
-    dot.className = 'key-dot missing';
-    label.textContent = 'Chave não configurada';
-    change.textContent = 'configurar';
-  }
-}
-// Init on load
-if (apiKey) updateKeyStatus();
-else showKeyModal();
+// API key modal removed — requests now go through DEEPSEEK_PROXY_URL, which
+// holds the real key server-side (Cloudflare Worker secret). No client-side
+// key entry, storage, or validation needed any more.
 
 // Mode is fixed to standalone — multi-doc batch removed pending improvement
 
@@ -1403,8 +1359,6 @@ NÃO incluir minuta de comunicação nesta análise. A minuta será gerada apena
 
 // ── MAIN ANALYSIS ──────────────────────────────────────────────────────────
 async function go() {
-  if (!apiKey) { showKeyModal(); return; }
-
   const dt    = document.getElementById('docType').value;
   const cat   = document.getElementById('category').value;
   const sec   = document.getElementById('sector').value;
@@ -1464,9 +1418,9 @@ async function go() {
 
     const systemPrompt = crossRefPrefix + buildSystem(dt, cat||session.category, sec||session.sector, loc||session.loc);
 
-    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    const resp = await fetch(DEEPSEEK_PROXY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'deepseek-v4-pro', max_tokens: 16000, temperature: 0.2,
         messages: [
@@ -1478,12 +1432,7 @@ async function go() {
 
     if (!resp.ok) {
       const e = await resp.json().catch(() => ({}));
-      const msg = e.error?.message || `HTTP ${resp.status}`;
-      if (resp.status === 401 || resp.status === 403) {
-        apiKey = null; sessionStorage.removeItem('aia_dskey'); updateKeyStatus();
-        throw new Error('Chave API inválida ou expirada. ' + msg);
-      }
-      throw new Error(msg);
+      throw new Error(e.error?.message || `HTTP ${resp.status}`);
     }
 
     const data = await resp.json();
